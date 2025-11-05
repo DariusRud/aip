@@ -6,6 +6,7 @@ import Dashboard from './components/Dashboard';
 import Users from './components/Users';
 import Purchases from './components/Purchases';
 import ProductTree from './components/ProductTree';
+import Companies from './components/Companies';
 
 interface Stats {
   needsReview: number;
@@ -150,14 +151,17 @@ function App() {
           <ProductTree userRole={userRole} />
         )}
 
-        {currentView !== 'dashboard' && currentView !== 'users' && currentView !== 'purchases' && currentView !== 'product-tree' && (
+        {currentView === 'companies' && (
+          <Companies userRole={userRole} />
+        )}
+
+        {currentView !== 'dashboard' && currentView !== 'users' && currentView !== 'purchases' && currentView !== 'product-tree' && currentView !== 'companies' && (
           <>
             <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-8 py-6">
               <div className="max-w-7xl mx-auto">
                 <h2 className="text-3xl font-bold text-slate-900">
                   {currentView === 'purchase-invoices' && 'Pirkimo Sąskaitos'}
                   {currentView === 'sales-invoices' && 'Pardavimo Sąskaitos'}
-                  {currentView === 'companies' && 'Įmonės'}
                   {currentView === 'export' && 'Eksportai'}
                   {currentView === 'reports' && 'Ataskaitos'}
                 </h2>
