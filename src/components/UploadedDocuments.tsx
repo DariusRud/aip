@@ -35,15 +35,6 @@ export default function UploadedDocuments() {
   const [expandedDocumentId, setExpandedDocumentId] = useState<string | null>(null);
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
-  const [editingItem, setEditingItem] = useState<InvoiceItem | null>(null);
-  const [newItem, setNewItem] = useState<Partial<InvoiceItem>>({
-    item_name: '',
-    item_code: '',
-    quantity: 1,
-    unit: 'vnt',
-    unit_price: 0,
-    vat_rate: 21,
-  });
 
   useEffect(() => {
     fetchDocuments();
@@ -102,100 +93,6 @@ export default function UploadedDocuments() {
     } else {
       setExpandedDocumentId(docId);
       await fetchItems(docId);
-    }
-  };
-
-  const calculateItemTotals = (item: Partial<InvoiceItem>) => {
-    const quantity = item.quantity || 0;
-    const unitPrice = item.unit_price || 0;
-    const vatRate = item.vat_rate || 0;
-
-    const subtotal = quantity * unitPrice;
-    const vat = subtotal * (vatRate / 100);
-    const total = subtotal + vat;
-
-    return {
-      vat_amount: parseFloat(vat.toFixed(2)),
-      total_amount: parseFloat(total.toFixed(2)),
-    };
-  };
-
-  const handleAddItem = async () => {
-    if (!expandedDocumentId || !newItem.item_name) return;
-
-    const totals = calculateItemTotals(newItem);
-
-    try {
-      const { error } = await supabase.from('purchase_invoice_items').insert({
-        uploaded_document_id: expandedDocumentId,
-        item_name: newItem.item_name,
-        item_code: newItem.item_code || null,
-        quantity: newItem.quantity || 1,
-        unit: newItem.unit || 'vnt',
-        unit_price: newItem.unit_price || 0,
-        vat_rate: newItem.vat_rate || 21,
-        vat_amount: totals.vat_amount,
-        total_amount: totals.total_amount,
-        notes: null,
-      });
-
-      if (error) throw error;
-
-      await fetchItems(expandedDocumentId);
-      setNewItem({
-        item_name: '',
-        item_code: '',
-        quantity: 1,
-        unit: 'vnt',
-        unit_price: 0,
-        vat_rate: 21,
-      });
-    } catch (error) {
-      console.error('Error adding item:', error);
-    }
-  };
-
-  const handleUpdateItem = async (item: InvoiceItem) => {
-    const totals = calculateItemTotals(item);
-
-    try {
-      const { error } = await supabase
-        .from('purchase_invoice_items')
-        .update({
-          item_name: item.item_name,
-          item_code: item.item_code,
-          quantity: item.quantity,
-          unit: item.unit,
-          unit_price: item.unit_price,
-          vat_rate: item.vat_rate,
-          vat_amount: totals.vat_amount,
-          total_amount: totals.total_amount,
-        })
-        .eq('id', item.id);
-
-      if (error) throw error;
-
-      await fetchItems(expandedDocumentId!);
-      setEditingItem(null);
-    } catch (error) {
-      console.error('Error updating item:', error);
-    }
-  };
-
-  const handleDeleteItem = async (itemId: string) => {
-    if (!confirm('Ar tikrai norite ištrinti šią prekę?')) return;
-
-    try {
-      const { error } = await supabase
-        .from('purchase_invoice_items')
-        .delete()
-        .eq('id', itemId);
-
-      if (error) throw error;
-
-      await fetchItems(expandedDocumentId!);
-    } catch (error) {
-      console.error('Error deleting item:', error);
     }
   };
 
@@ -380,9 +277,19 @@ export default function UploadedDocuments() {
                       <tr>
                         <td colSpan={6} className="px-6 py-4 bg-gray-50">
                           <div className="space-y-4">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                              Prekių sąrašas
-                            </h3>
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold text-gray-900">Prekių sąrašas</h3>
+                              <button
+                                onClick={() => {
+                                  setSelectedDocumentId(doc.id);
+                                  setEditMode(true);
+                                }}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                              >
+                                <i className="fas fa-edit mr-2"></i>
+                                Koreguoti
+                              </button>
+                            </div>
 
                             {loadingItems ? (
                               <div className="text-center py-4">
@@ -390,256 +297,79 @@ export default function UploadedDocuments() {
                               </div>
                             ) : (
                               <>
-                                <div className="overflow-x-auto">
-                                  <table className="min-w-full divide-y divide-gray-200 bg-white rounded-lg">
-                                    <thead className="bg-gray-100">
-                                      <tr>
-                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                                          Prekė
-                                        </th>
-                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                                          Kodas
-                                        </th>
-                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                                          Kiekis
-                                        </th>
-                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                                          Vnt.
-                                        </th>
-                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                                          Kaina
-                                        </th>
-                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                                          PVM %
-                                        </th>
-                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                                          PVM
-                                        </th>
-                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                                          Suma
-                                        </th>
-                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                                          Veiksmai
-                                        </th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200">
-                                      {items.map((item) => (
-                                        <tr key={item.id} className="hover:bg-gray-50">
-                                          {editingItem?.id === item.id ? (
-                                            <>
-                                              <td className="px-4 py-2">
-                                                <input
-                                                  type="text"
-                                                  value={editingItem.item_name}
-                                                  onChange={(e) =>
-                                                    setEditingItem({ ...editingItem, item_name: e.target.value })
-                                                  }
-                                                  className="w-full px-2 py-1 border rounded"
-                                                />
-                                              </td>
-                                              <td className="px-4 py-2">
-                                                <input
-                                                  type="text"
-                                                  value={editingItem.item_code || ''}
-                                                  onChange={(e) =>
-                                                    setEditingItem({ ...editingItem, item_code: e.target.value })
-                                                  }
-                                                  className="w-full px-2 py-1 border rounded"
-                                                />
-                                              </td>
-                                              <td className="px-4 py-2">
-                                                <input
-                                                  type="number"
-                                                  value={editingItem.quantity}
-                                                  onChange={(e) =>
-                                                    setEditingItem({
-                                                      ...editingItem,
-                                                      quantity: parseFloat(e.target.value),
-                                                    })
-                                                  }
-                                                  className="w-20 px-2 py-1 border rounded"
-                                                />
-                                              </td>
-                                              <td className="px-4 py-2">
-                                                <input
-                                                  type="text"
-                                                  value={editingItem.unit}
-                                                  onChange={(e) =>
-                                                    setEditingItem({ ...editingItem, unit: e.target.value })
-                                                  }
-                                                  className="w-16 px-2 py-1 border rounded"
-                                                />
-                                              </td>
-                                              <td className="px-4 py-2">
-                                                <input
-                                                  type="number"
-                                                  step="0.01"
-                                                  value={editingItem.unit_price}
-                                                  onChange={(e) =>
-                                                    setEditingItem({
-                                                      ...editingItem,
-                                                      unit_price: parseFloat(e.target.value),
-                                                    })
-                                                  }
-                                                  className="w-24 px-2 py-1 border rounded"
-                                                />
-                                              </td>
-                                              <td className="px-4 py-2">
-                                                <input
-                                                  type="number"
-                                                  value={editingItem.vat_rate}
-                                                  onChange={(e) =>
-                                                    setEditingItem({
-                                                      ...editingItem,
-                                                      vat_rate: parseFloat(e.target.value),
-                                                    })
-                                                  }
-                                                  className="w-16 px-2 py-1 border rounded"
-                                                />
-                                              </td>
-                                              <td className="px-4 py-2 text-sm">
-                                                {calculateItemTotals(editingItem).vat_amount.toFixed(2)}
-                                              </td>
-                                              <td className="px-4 py-2 text-sm font-medium">
-                                                {calculateItemTotals(editingItem).total_amount.toFixed(2)}
-                                              </td>
-                                              <td className="px-4 py-2">
-                                                <button
-                                                  onClick={() => handleUpdateItem(editingItem)}
-                                                  className="text-green-600 hover:text-green-900 mr-2"
-                                                >
-                                                  <i className="fas fa-check"></i>
-                                                </button>
-                                                <button
-                                                  onClick={() => setEditingItem(null)}
-                                                  className="text-gray-600 hover:text-gray-900"
-                                                >
-                                                  <i className="fas fa-times"></i>
-                                                </button>
-                                              </td>
-                                            </>
-                                          ) : (
-                                            <>
-                                              <td className="px-4 py-2 text-sm">{item.item_name}</td>
-                                              <td className="px-4 py-2 text-sm text-gray-500">
-                                                {item.item_code || '-'}
-                                              </td>
-                                              <td className="px-4 py-2 text-sm">{item.quantity}</td>
-                                              <td className="px-4 py-2 text-sm">{item.unit}</td>
-                                              <td className="px-4 py-2 text-sm">{item.unit_price.toFixed(2)}</td>
-                                              <td className="px-4 py-2 text-sm">{item.vat_rate}%</td>
-                                              <td className="px-4 py-2 text-sm">{item.vat_amount.toFixed(2)}</td>
-                                              <td className="px-4 py-2 text-sm font-medium">
-                                                {item.total_amount.toFixed(2)}
-                                              </td>
-                                              <td className="px-4 py-2">
-                                                <button
-                                                  onClick={() => setEditingItem(item)}
-                                                  className="text-blue-600 hover:text-blue-900 mr-2"
-                                                >
-                                                  <i className="fas fa-edit"></i>
-                                                </button>
-                                                <button
-                                                  onClick={() => handleDeleteItem(item.id)}
-                                                  className="text-red-600 hover:text-red-900"
-                                                >
-                                                  <i className="fas fa-trash"></i>
-                                                </button>
-                                              </td>
-                                            </>
-                                          )}
+                                {items.length === 0 ? (
+                                  <div className="text-center py-8 text-gray-500">
+                                    <p className="mb-4">Nėra nuskaitytų prekių šiame dokumente.</p>
+                                    <button
+                                      onClick={() => {
+                                        setSelectedDocumentId(doc.id);
+                                        setEditMode(true);
+                                      }}
+                                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                    >
+                                      Pridėti prekes rankiniu būdu
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200 bg-white rounded-lg">
+                                      <thead className="bg-gray-100">
+                                        <tr>
+                                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Prekė
+                                          </th>
+                                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Kodas
+                                          </th>
+                                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Kiekis
+                                          </th>
+                                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Vnt.
+                                          </th>
+                                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Kaina
+                                          </th>
+                                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            PVM %
+                                          </th>
+                                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            PVM
+                                          </th>
+                                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Suma
+                                          </th>
+                                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Statusas
+                                          </th>
                                         </tr>
-                                      ))}
-                                      <tr className="bg-blue-50">
-                                        <td className="px-4 py-2">
-                                          <input
-                                            type="text"
-                                            value={newItem.item_name}
-                                            onChange={(e) =>
-                                              setNewItem({ ...newItem, item_name: e.target.value })
-                                            }
-                                            placeholder="Prekės pavadinimas"
-                                            className="w-full px-2 py-1 border rounded"
-                                          />
-                                        </td>
-                                        <td className="px-4 py-2">
-                                          <input
-                                            type="text"
-                                            value={newItem.item_code || ''}
-                                            onChange={(e) =>
-                                              setNewItem({ ...newItem, item_code: e.target.value })
-                                            }
-                                            placeholder="Kodas"
-                                            className="w-full px-2 py-1 border rounded"
-                                          />
-                                        </td>
-                                        <td className="px-4 py-2">
-                                          <input
-                                            type="number"
-                                            value={newItem.quantity}
-                                            onChange={(e) =>
-                                              setNewItem({ ...newItem, quantity: parseFloat(e.target.value) })
-                                            }
-                                            className="w-20 px-2 py-1 border rounded"
-                                          />
-                                        </td>
-                                        <td className="px-4 py-2">
-                                          <input
-                                            type="text"
-                                            value={newItem.unit}
-                                            onChange={(e) =>
-                                              setNewItem({ ...newItem, unit: e.target.value })
-                                            }
-                                            className="w-16 px-2 py-1 border rounded"
-                                          />
-                                        </td>
-                                        <td className="px-4 py-2">
-                                          <input
-                                            type="number"
-                                            step="0.01"
-                                            value={newItem.unit_price}
-                                            onChange={(e) =>
-                                              setNewItem({ ...newItem, unit_price: parseFloat(e.target.value) })
-                                            }
-                                            className="w-24 px-2 py-1 border rounded"
-                                          />
-                                        </td>
-                                        <td className="px-4 py-2">
-                                          <input
-                                            type="number"
-                                            value={newItem.vat_rate}
-                                            onChange={(e) =>
-                                              setNewItem({ ...newItem, vat_rate: parseFloat(e.target.value) })
-                                            }
-                                            className="w-16 px-2 py-1 border rounded"
-                                          />
-                                        </td>
-                                        <td className="px-4 py-2 text-sm">
-                                          {calculateItemTotals(newItem).vat_amount.toFixed(2)}
-                                        </td>
-                                        <td className="px-4 py-2 text-sm font-medium">
-                                          {calculateItemTotals(newItem).total_amount.toFixed(2)}
-                                        </td>
-                                        <td className="px-4 py-2">
-                                          <button
-                                            onClick={handleAddItem}
-                                            disabled={!newItem.item_name}
-                                            className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                                          >
-                                            <i className="fas fa-plus mr-1"></i>
-                                            Pridėti
-                                          </button>
-                                        </td>
-                                      </tr>
-                                    </tbody>
-                                  </table>
-                                </div>
-
-                                {items.length === 0 && (
-                                  <p className="text-center text-gray-500 py-4">
-                                    Nėra prekių. Pridėkite naują prekę naudodami formą aukščiau.
-                                  </p>
+                                      </thead>
+                                      <tbody className="divide-y divide-gray-200">
+                                        {items.map((item) => (
+                                          <tr key={item.id} className="hover:bg-gray-50">
+                                            <td className="px-4 py-2 text-sm">{item.item_name}</td>
+                                            <td className="px-4 py-2 text-sm text-gray-500">
+                                              {item.item_code || '-'}
+                                            </td>
+                                            <td className="px-4 py-2 text-sm">{item.quantity}</td>
+                                            <td className="px-4 py-2 text-sm">{item.unit}</td>
+                                            <td className="px-4 py-2 text-sm">{item.unit_price.toFixed(2)}</td>
+                                            <td className="px-4 py-2 text-sm">{item.vat_rate}%</td>
+                                            <td className="px-4 py-2 text-sm">{item.vat_amount.toFixed(2)}</td>
+                                            <td className="px-4 py-2 text-sm font-medium">
+                                              {item.total_amount.toFixed(2)}
+                                            </td>
+                                            <td className="px-4 py-2 text-sm">
+                                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                <i className="fas fa-check mr-1"></i>
+                                                OK
+                                              </span>
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
                                 )}
                               </>
                             )}
@@ -661,6 +391,7 @@ export default function UploadedDocuments() {
           onClose={() => {
             setSelectedDocumentId(null);
             setEditMode(false);
+            fetchDocuments();
           }}
           onSaved={() => {
             setSelectedDocumentId(null);
