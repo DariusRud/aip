@@ -43,6 +43,15 @@ function Purchases({ userRole }: PurchasesProps) {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
 
+  const formatDate = (dateString: string): string => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [newInvoice, setNewInvoice] = useState({
     invoice_number: '',
     supplier: '',
@@ -280,7 +289,7 @@ function Purchases({ userRole }: PurchasesProps) {
                       <div className="flex-1">
                         <div className="font-medium text-slate-800">{invoice.invoice_number}</div>
                         <div className="text-sm text-slate-600">{invoice.supplier}</div>
-                        <div className="text-xs text-slate-500 mt-1">{invoice.invoice_date}</div>
+                        <div className="text-xs text-slate-500 mt-1">{formatDate(invoice.invoice_date)}</div>
                       </div>
                       <div className="text-right">
                         <div className="font-semibold text-slate-800">
@@ -407,9 +416,11 @@ function Purchases({ userRole }: PurchasesProps) {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Data</label>
                   <input
-                    type="date"
+                    type="text"
                     value={newInvoice.invoice_date}
                     onChange={(e) => setNewInvoice({ ...newInvoice, invoice_date: e.target.value })}
+                    placeholder="YYYY-MM-DD"
+                    maxLength={10}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     required
                   />

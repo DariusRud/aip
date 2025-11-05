@@ -35,6 +35,15 @@ function PurchaseInvoices({ userRole }: PurchaseInvoicesProps) {
   const [showModal, setShowModal] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<PurchaseInvoice | null>(null);
 
+  const formatDate = (dateString: string): string => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [filters, setFilters] = useState({
     supplier: '',
     invoice_number: '',
@@ -127,7 +136,7 @@ function PurchaseInvoices({ userRole }: PurchaseInvoicesProps) {
         invoice_number: invoice.invoice_number,
         supplier_id: invoice.supplier_id || '',
         company_vat_code: invoice.company_vat_code || '',
-        invoice_date: invoice.invoice_date,
+        invoice_date: formatDate(invoice.invoice_date),
         order_number: invoice.order_number || '',
         sum_netto: invoice.sum_netto || 0,
         vat_amount: invoice.vat_amount || 0,
@@ -263,11 +272,11 @@ function PurchaseInvoices({ userRole }: PurchaseInvoicesProps) {
           <div className="flex-1 min-w-[200px]">
             <label className="block text-sm font-medium text-slate-700 mb-1">Data nuo:</label>
             <input
-              type="date"
+              type="text"
               value={filters.dateFrom}
               onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
               placeholder="YYYY-MM-DD"
-              pattern="\d{4}-\d{2}-\d{2}"
+              maxLength={10}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -275,11 +284,11 @@ function PurchaseInvoices({ userRole }: PurchaseInvoicesProps) {
           <div className="flex-1 min-w-[200px]">
             <label className="block text-sm font-medium text-slate-700 mb-1">Data iki:</label>
             <input
-              type="date"
+              type="text"
               value={filters.dateTo}
               onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
               placeholder="YYYY-MM-DD"
-              pattern="\d{4}-\d{2}-\d{2}"
+              maxLength={10}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -320,7 +329,7 @@ function PurchaseInvoices({ userRole }: PurchaseInvoicesProps) {
                       <td className="py-3 px-4 text-slate-800">{invoice.companies?.code || '-'}</td>
                       <td className="py-3 px-4 text-slate-800">{invoice.company_vat_code || '-'}</td>
                       <td className="py-3 px-4 text-slate-800">{invoice.companies?.name || 'Nenurodyta'}</td>
-                      <td className="py-3 px-4 text-slate-600">{invoice.invoice_date}</td>
+                      <td className="py-3 px-4 text-slate-600">{formatDate(invoice.invoice_date)}</td>
                       <td className="py-3 px-4 text-slate-800 font-medium">{invoice.invoice_number}</td>
                       <td className="py-3 px-4 text-slate-600">{invoice.order_number || '-'}</td>
                       <td className="py-3 px-4 text-right text-slate-800">{invoice.sum_netto?.toFixed(2) || '0.00'}</td>
@@ -416,9 +425,11 @@ function PurchaseInvoices({ userRole }: PurchaseInvoicesProps) {
                     Sąskaitos data <span className="text-red-500">*</span>
                   </label>
                   <input
-                    type="date"
+                    type="text"
                     value={formData.invoice_date}
                     onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })}
+                    placeholder="YYYY-MM-DD"
+                    maxLength={10}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     required
                   />
