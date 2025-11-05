@@ -96,6 +96,31 @@ export default function UploadedDocuments() {
     }
   };
 
+  const handleDeleteDocument = async (docId: string, docNumber: string) => {
+    if (!confirm(`Ar tikrai norite ištrinti dokumentą "${docNumber}"?\n\nBus ištrinti visi su šiuo dokumentu susiję duomenys (prekės, priedai).`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('uploaded_documents')
+        .delete()
+        .eq('id', docId);
+
+      if (error) throw error;
+
+      await fetchDocuments();
+
+      if (expandedDocumentId === docId) {
+        setExpandedDocumentId(null);
+        setItems([]);
+      }
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      alert('Klaida ištrinant dokumentą. Bandykite dar kartą.');
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
@@ -262,9 +287,19 @@ export default function UploadedDocuments() {
                             setSelectedDocumentId(doc.id);
                             setEditMode(doc.status === 'pending');
                           }}
-                          className="text-blue-600 hover:text-blue-900 mr-4"
+                          className="text-blue-600 hover:text-blue-900 mr-3"
                         >
                           {doc.status === 'pending' ? 'Koreguoti' : 'Peržiūrėti'}
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteDocument(doc.id, doc.invoice_number);
+                          }}
+                          className="text-red-600 hover:text-red-900 mr-3"
+                          title="Ištrinti dokumentą"
+                        >
+                          <i className="fas fa-trash"></i>
                         </button>
                         <i
                           className={`fas fa-chevron-${
