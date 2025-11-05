@@ -6,7 +6,7 @@ interface Stats {
   todayCorrections: number;
 }
 
-type View = 'dashboard' | 'purchase-invoices' | 'sales-invoices' | 'companies' | 'products' | 'export' | 'reports';
+type View = 'dashboard' | 'purchase-invoices' | 'sales-invoices' | 'companies' | 'purchases' | 'product-tree' | 'export' | 'reports';
 
 interface DashboardProps {
   currentDate: string;

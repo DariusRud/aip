@@ -1,3 +1,5 @@
+import React from 'react';
+
 interface Stats {
   needsReview: number;
   todayUploaded: number;
@@ -6,7 +8,7 @@ interface Stats {
   todayCorrections: number;
 }
 
-type View = 'dashboard' | 'purchase-invoices' | 'sales-invoices' | 'companies' | 'products' | 'export' | 'reports' | 'users';
+type View = 'dashboard' | 'purchase-invoices' | 'sales-invoices' | 'companies' | 'purchases' | 'product-tree' | 'export' | 'reports' | 'users';
 
 interface SidebarProps {
   currentView: View;
@@ -18,6 +20,14 @@ interface SidebarProps {
 }
 
 function Sidebar({ currentView, setCurrentView, stats, userEmail, userRole, onLogout }: SidebarProps) {
+  const [isPurchasesOpen, setIsPurchasesOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (currentView === 'purchases' || currentView === 'product-tree') {
+      setIsPurchasesOpen(true);
+    }
+  }, [currentView]);
+
   return (
     <nav className="w-64 sidebar flex flex-col">
       <div className="p-6">
@@ -99,16 +109,44 @@ function Sidebar({ currentView, setCurrentView, stats, userEmail, userRole, onLo
         </li>
 
         <li>
-          <a
-            onClick={(e) => { e.preventDefault(); setCurrentView('products'); }}
-            href="#"
-            className={`nav-link flex items-center px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${
-              currentView === 'products' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
+          <button
+            onClick={() => setIsPurchasesOpen(!isPurchasesOpen)}
+            className={`nav-link flex items-center w-full px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${
+              (currentView === 'purchases' || currentView === 'product-tree') ? 'bg-indigo-50 text-indigo-700 font-medium' : ''
             }`}
           >
-            <i className="fas fa-boxes w-5 mr-3 text-base"></i>
-            <span>Prekių Medis</span>
-          </a>
+            <i className="fas fa-shopping-cart w-5 mr-3 text-base"></i>
+            <span className="flex-1 text-left">Pirkimai</span>
+            <i className={`fas fa-chevron-down text-xs transition-transform ${
+              isPurchasesOpen ? 'rotate-180' : ''
+            }`}></i>
+          </button>
+          {isPurchasesOpen && (
+            <ul className="mt-1 ml-4 space-y-1">
+              <li>
+                <a
+                  onClick={(e) => { e.preventDefault(); setCurrentView('purchases'); }}
+                  href="#"
+                  className={`nav-link flex items-center px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg text-sm ${
+                    currentView === 'purchases' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
+                  }`}
+                >
+                  <span>Prekės</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  onClick={(e) => { e.preventDefault(); setCurrentView('product-tree'); }}
+                  href="#"
+                  className={`nav-link flex items-center px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg text-sm ${
+                    currentView === 'product-tree' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
+                  }`}
+                >
+                  <span>Prekių medis</span>
+                </a>
+              </li>
+            </ul>
+          )}
         </li>
 
         <li>

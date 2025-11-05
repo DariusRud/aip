@@ -4,6 +4,8 @@ import Login from './components/Login';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Users from './components/Users';
+import Purchases from './components/Purchases';
+import ProductTree from './components/ProductTree';
 
 interface Stats {
   needsReview: number;
@@ -13,7 +15,7 @@ interface Stats {
   todayCorrections: number;
 }
 
-type View = 'dashboard' | 'purchase-invoices' | 'sales-invoices' | 'companies' | 'products' | 'export' | 'reports' | 'users';
+type View = 'dashboard' | 'purchase-invoices' | 'sales-invoices' | 'companies' | 'purchases' | 'product-tree' | 'export' | 'reports' | 'users';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -140,7 +142,15 @@ function App() {
           <Users currentUserRole={userRole} />
         )}
 
-        {currentView !== 'dashboard' && currentView !== 'users' && (
+        {currentView === 'purchases' && (
+          <Purchases userRole={userRole} />
+        )}
+
+        {currentView === 'product-tree' && (
+          <ProductTree userRole={userRole} />
+        )}
+
+        {currentView !== 'dashboard' && currentView !== 'users' && currentView !== 'purchases' && currentView !== 'product-tree' && (
           <>
             <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-8 py-6">
               <div className="max-w-7xl mx-auto">
@@ -148,7 +158,6 @@ function App() {
                   {currentView === 'purchase-invoices' && 'Pirkimo Sąskaitos'}
                   {currentView === 'sales-invoices' && 'Pardavimo Sąskaitos'}
                   {currentView === 'companies' && 'Įmonės'}
-                  {currentView === 'products' && 'Prekių Medis'}
                   {currentView === 'export' && 'Eksportai'}
                   {currentView === 'reports' && 'Ataskaitos'}
                 </h2>
