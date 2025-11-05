@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 interface Company {
   id: string;
   name: string;
-  company_code: string | null;
+  code: string | null;
 }
 
 interface PurchaseInvoice {
@@ -38,7 +38,8 @@ function PurchaseInvoices({ userRole }: PurchaseInvoicesProps) {
   const [filters, setFilters] = useState({
     supplier: '',
     invoice_number: '',
-    date: '',
+    dateFrom: '',
+    dateTo: '',
   });
 
   const [formData, setFormData] = useState({
@@ -62,7 +63,7 @@ function PurchaseInvoices({ userRole }: PurchaseInvoicesProps) {
     try {
       const { data, error } = await supabase
         .from('companies')
-        .select('id, name, company_code')
+        .select('id, name, code')
         .eq('type', 'supplier')
         .order('name');
 
@@ -83,7 +84,7 @@ function PurchaseInvoices({ userRole }: PurchaseInvoicesProps) {
           companies:supplier_id (
             id,
             name,
-            company_code
+            code
           )
         `)
         .order('invoice_date', { ascending: false });
@@ -96,8 +97,12 @@ function PurchaseInvoices({ userRole }: PurchaseInvoicesProps) {
         query = query.ilike('invoice_number', `%${filters.invoice_number}%`);
       }
 
-      if (filters.date) {
-        query = query.eq('invoice_date', filters.date);
+      if (filters.dateFrom) {
+        query = query.gte('invoice_date', filters.dateFrom);
+      }
+
+      if (filters.dateTo) {
+        query = query.lte('invoice_date', filters.dateTo);
       }
 
       const { data, error } = await query;
@@ -256,11 +261,21 @@ function PurchaseInvoices({ userRole }: PurchaseInvoicesProps) {
           </div>
 
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-slate-700 mb-1">Data:</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Data nuo:</label>
             <input
               type="date"
-              value={filters.date}
-              onChange={(e) => setFilters({ ...filters, date: e.target.value })}
+              value={filters.dateFrom}
+              onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-sm font-medium text-slate-700 mb-1">Data iki:</label>
+            <input
+              type="date"
+              value={filters.dateTo}
+              onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -275,14 +290,8 @@ function PurchaseInvoices({ userRole }: PurchaseInvoicesProps) {
 
       <div className="flex-1 overflow-auto p-8">
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-          {invoices.length === 0 ? (
-            <div className="text-center py-12 text-slate-400">
-              <i className="fas fa-file-invoice text-4xl mb-4"></i>
-              <p>Nerasta sąskaitų</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
+          <div className="overflow-x-auto">
+            <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">ID</th>
@@ -307,7 +316,7 @@ function PurchaseInvoices({ userRole }: PurchaseInvoicesProps) {
                     <tr key={invoice.id} className="hover:bg-slate-50">
                       <td className="py-3 px-4 text-slate-600">{index + 1}</td>
                       <td className="py-3 px-4">
-                        <div className="text-slate-800">{invoice.companies?.company_code || '-'}</div>
+                        <div className="text-slate-800">{invoice.companies?.code || '-'}</div>
                         <div className="text-sm text-red-600">{invoice.company_vat_code || '-'}</div>
                       </td>
                       <td className="py-3 px-4 text-slate-800">{invoice.companies?.name || 'Nenurodyta'}</td>
@@ -343,8 +352,13 @@ function PurchaseInvoices({ userRole }: PurchaseInvoicesProps) {
                   ))}
                 </tbody>
               </table>
+              {invoices.length === 0 && (
+                <div className="text-center py-12 text-slate-400">
+                  <i className="fas fa-file-invoice text-4xl mb-4"></i>
+                  <p>Nerasta sąskaitų</p>
+                </div>
+              )}
             </div>
-          )}
         </div>
       </div>
 
