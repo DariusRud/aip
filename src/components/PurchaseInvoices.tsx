@@ -295,10 +295,8 @@ function PurchaseInvoices({ userRole }: PurchaseInvoicesProps) {
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">ID</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">
-                      <div>ĮMONĖS KODAS</div>
-                      <div className="text-xs font-normal text-red-500">PVM</div>
-                    </th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">ĮMONĖS KODAS</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">PVM KODAS</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">TIEKĖJAS</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">SĄSKAITOS DATA</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">SĄSKAITOS NUMERIS</th>
@@ -315,10 +313,8 @@ function PurchaseInvoices({ userRole }: PurchaseInvoicesProps) {
                   {invoices.map((invoice, index) => (
                     <tr key={invoice.id} className="hover:bg-slate-50">
                       <td className="py-3 px-4 text-slate-600">{index + 1}</td>
-                      <td className="py-3 px-4">
-                        <div className="text-slate-800">{invoice.companies?.code || '-'}</div>
-                        <div className="text-sm text-red-600">{invoice.company_vat_code || '-'}</div>
-                      </td>
+                      <td className="py-3 px-4 text-slate-800">{invoice.companies?.code || '-'}</td>
+                      <td className="py-3 px-4 text-slate-800">{invoice.company_vat_code || '-'}</td>
                       <td className="py-3 px-4 text-slate-800">{invoice.companies?.name || 'Nenurodyta'}</td>
                       <td className="py-3 px-4 text-slate-600">{invoice.invoice_date}</td>
                       <td className="py-3 px-4 text-slate-800 font-medium">{invoice.invoice_number}</td>
