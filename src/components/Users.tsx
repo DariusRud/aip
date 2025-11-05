@@ -165,22 +165,26 @@ export default function Users({ currentUserRole }: UsersProps) {
   }
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">Vartotojai</h1>
-          <p className="text-slate-600 mt-1">Sistemos vartotojų valdymas</p>
+    <>
+      <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-8 py-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">Vartotojai</h1>
+            <p className="text-slate-600 mt-1">Sistemos vartotojų valdymas</p>
+          </div>
+          {currentUserRole === 'admin' && (
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition flex items-center gap-2"
+            >
+              <i className="fas fa-plus"></i>
+              Pridėti Vartotoją
+            </button>
+          )}
         </div>
-        {currentUserRole === 'admin' && (
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition flex items-center gap-2"
-          >
-            <i className="fas fa-plus"></i>
-            Pridėti Vartotoją
-          </button>
-        )}
       </div>
+
+      <div className="flex-1 overflow-y-auto p-8">
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <table className="w-full">
@@ -378,6 +382,7 @@ export default function Users({ currentUserRole }: UsersProps) {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

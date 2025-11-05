@@ -17,27 +17,32 @@ interface DashboardProps {
 
 function Dashboard({ currentDate, stats, setShowUploadModal, setCurrentView }: DashboardProps) {
   return (
-    <div className="max-w-7xl mx-auto p-8">
-      <div className="flex justify-between items-start mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-800 mb-1">Darbalaukis</h1>
-          <p className="text-slate-500 time-display">{currentDate}</p>
-        </div>
-        <div className="flex gap-3">
-          <button className="px-4 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2">
-            <i className="fas fa-bell text-slate-600"></i>
-            <span className="text-sm font-medium text-slate-700">Pranešimai</span>
-            <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">3</span>
-          </button>
-          <button
-            onClick={() => setShowUploadModal(true)}
-            className="px-5 py-2 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-lg hover:from-indigo-700 hover:to-indigo-600 transition-all shadow-sm flex items-center gap-2 quick-action"
-          >
-            <i className="fas fa-plus text-sm"></i>
-            <span className="font-medium">Įkelti Sąskaitą</span>
-          </button>
+    <>
+      <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-8 py-6">
+        <div className="max-w-7xl mx-auto flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-800 mb-1">Darbalaukis</h1>
+            <p className="text-slate-500 time-display">{currentDate}</p>
+          </div>
+          <div className="flex gap-3">
+            <button className="px-4 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2">
+              <i className="fas fa-bell text-slate-600"></i>
+              <span className="text-sm font-medium text-slate-700">Pranešimai</span>
+              <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">3</span>
+            </button>
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="px-5 py-2 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-lg hover:from-indigo-700 hover:to-indigo-600 transition-all shadow-sm flex items-center gap-2 quick-action"
+            >
+              <i className="fas fa-plus text-sm"></i>
+              <span className="font-medium">Įkelti Sąskaitą</span>
+            </button>
+          </div>
         </div>
       </div>
+
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-7xl mx-auto p-8">
 
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-4">
@@ -241,7 +246,9 @@ function Dashboard({ currentDate, stats, setShowUploadModal, setCurrentView }: D
           </div>
         </div>
       </div>
-    </div>
+        </div>
+      </div>
+    </>
   );
 }
 

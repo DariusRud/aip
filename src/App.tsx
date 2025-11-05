@@ -116,7 +116,7 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar
         currentView={currentView}
         setCurrentView={setCurrentView}
@@ -126,7 +126,7 @@ function App() {
         onLogout={handleLogout}
       />
 
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 flex flex-col overflow-hidden">
         {currentView === 'dashboard' && (
           <Dashboard
             currentDate={currentDate}
@@ -141,19 +141,27 @@ function App() {
         )}
 
         {currentView !== 'dashboard' && currentView !== 'users' && (
-          <div className="max-w-7xl mx-auto p-8">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
-              <h2 className="text-2xl font-semibold text-slate-800 mb-4">
-                {currentView === 'purchase-invoices' && 'Pirkimo Sąskaitos'}
-                {currentView === 'sales-invoices' && 'Pardavimo Sąskaitos'}
-                {currentView === 'companies' && 'Įmonės'}
-                {currentView === 'products' && 'Prekių Medis'}
-                {currentView === 'export' && 'Eksportai'}
-                {currentView === 'reports' && 'Ataskaitos'}
-              </h2>
-              <p className="text-slate-600">Funkcionalumas bus pridėtas vėliau...</p>
+          <>
+            <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-8 py-6">
+              <div className="max-w-7xl mx-auto">
+                <h2 className="text-3xl font-bold text-slate-900">
+                  {currentView === 'purchase-invoices' && 'Pirkimo Sąskaitos'}
+                  {currentView === 'sales-invoices' && 'Pardavimo Sąskaitos'}
+                  {currentView === 'companies' && 'Įmonės'}
+                  {currentView === 'products' && 'Prekių Medis'}
+                  {currentView === 'export' && 'Eksportai'}
+                  {currentView === 'reports' && 'Ataskaitos'}
+                </h2>
+              </div>
             </div>
-          </div>
+            <div className="flex-1 overflow-y-auto">
+              <div className="max-w-7xl mx-auto p-8">
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+                  <p className="text-slate-600">Funkcionalumas bus pridėtas vėliau...</p>
+                </div>
+              </div>
+            </div>
+          </>
         )}
       </main>
 
