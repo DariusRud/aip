@@ -8,6 +8,12 @@ interface User {
   created_at: string;
 }
 
+interface EditModalData {
+  id: string;
+  email: string;
+  role: 'user' | 'admin';
+}
+
 interface UsersProps {
   currentUserRole: string;
 }
@@ -16,6 +22,8 @@ export default function Users({ currentUserRole }: UsersProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<EditModalData | null>(null);
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<'user' | 'admin'>('user');
@@ -79,6 +87,46 @@ export default function Users({ currentUserRole }: UsersProps) {
       fetchUsers();
     } catch (err: any) {
       setError(err.message || 'Klaida pridedant vartotoją');
+    }
+  };
+
+  const handleEditUser = (user: User) => {
+    setEditingUser({
+      id: user.id,
+      email: user.email,
+      role: user.role as 'user' | 'admin',
+    });
+    setShowEditModal(true);
+    setError('');
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (!editingUser) return;
+
+    if (currentUserRole !== 'admin') {
+      setError('Tik administratoriai gali koreguoti vartotojus');
+      return;
+    }
+
+    try {
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          email: editingUser.email,
+          role: editingUser.role,
+        })
+        .eq('id', editingUser.id);
+
+      if (updateError) throw updateError;
+
+      setShowEditModal(false);
+      setEditingUser(null);
+      fetchUsers();
+    } catch (err: any) {
+      setError(err.message || 'Klaida atnaujinant vartotoją');
     }
   };
 
@@ -166,14 +214,24 @@ export default function Users({ currentUserRole }: UsersProps) {
                 </td>
                 {currentUserRole === 'admin' && (
                   <td className="px-6 py-4 text-right">
-                    {user.role !== 'admin' && (
+                    <div className="flex items-center justify-end gap-3">
                       <button
-                        onClick={() => handleDeleteUser(user.id, user.role)}
-                        className="text-red-600 hover:text-red-700 transition"
+                        onClick={() => handleEditUser(user)}
+                        className="text-blue-600 hover:text-blue-700 transition"
+                        title="Koreguoti"
                       >
-                        <i className="fas fa-trash"></i>
+                        <i className="fas fa-edit"></i>
                       </button>
-                    )}
+                      {user.role !== 'admin' && (
+                        <button
+                          onClick={() => handleDeleteUser(user.id, user.role)}
+                          className="text-red-600 hover:text-red-700 transition"
+                          title="Ištrinti"
+                        >
+                          <i className="fas fa-trash"></i>
+                        </button>
+                      )}
+                    </div>
                   </td>
                 )}
               </tr>
@@ -251,6 +309,69 @@ export default function Users({ currentUserRole }: UsersProps) {
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
                 >
                   Pridėti
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && editingUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-slate-900 mb-4">Koreguoti Vartotoją</h2>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleUpdateUser} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  El. paštas
+                </label>
+                <input
+                  type="email"
+                  value={editingUser.email}
+                  onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Rolė
+                </label>
+                <select
+                  value={editingUser.role}
+                  onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value as 'user' | 'admin' })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="user">Vartotojas</option>
+                  <option value="admin">Administratorius</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingUser(null);
+                    setError('');
+                  }}
+                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition"
+                >
+                  Atšaukti
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                >
+                  Išsaugoti
                 </button>
               </div>
             </form>
