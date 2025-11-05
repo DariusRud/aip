@@ -8,6 +8,8 @@ import Purchases from './components/Purchases';
 import ProductTree from './components/ProductTree';
 import Companies from './components/Companies';
 import PurchaseInvoices from './components/PurchaseInvoices';
+import UploadedDocuments from './components/UploadedDocuments';
+import UploadDocument from './components/UploadDocument';
 
 interface Stats {
   needsReview: number;
@@ -17,7 +19,7 @@ interface Stats {
   todayCorrections: number;
 }
 
-type View = 'dashboard' | 'purchase-invoices' | 'sales-invoices' | 'companies' | 'purchases' | 'product-tree' | 'export' | 'reports' | 'users';
+type View = 'dashboard' | 'purchase-invoices' | 'sales-invoices' | 'companies' | 'purchases' | 'product-tree' | 'export' | 'reports' | 'users' | 'uploaded-documents' | 'upload-document';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -160,7 +162,15 @@ function App() {
           <PurchaseInvoices userRole={userRole} />
         )}
 
-        {currentView !== 'dashboard' && currentView !== 'users' && currentView !== 'purchases' && currentView !== 'product-tree' && currentView !== 'companies' && currentView !== 'purchase-invoices' && (
+        {currentView === 'uploaded-documents' && (
+          <UploadedDocuments />
+        )}
+
+        {currentView === 'upload-document' && (
+          <UploadDocument />
+        )}
+
+        {currentView !== 'dashboard' && currentView !== 'users' && currentView !== 'purchases' && currentView !== 'product-tree' && currentView !== 'companies' && currentView !== 'purchase-invoices' && currentView !== 'uploaded-documents' && currentView !== 'upload-document' && (
           <>
             <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-8 py-6">
               <div className="max-w-7xl mx-auto">

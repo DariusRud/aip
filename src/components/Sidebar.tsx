@@ -8,7 +8,7 @@ interface Stats {
   todayCorrections: number;
 }
 
-type View = 'dashboard' | 'purchase-invoices' | 'sales-invoices' | 'companies' | 'purchases' | 'product-tree' | 'export' | 'reports' | 'users';
+type View = 'dashboard' | 'purchase-invoices' | 'sales-invoices' | 'companies' | 'purchases' | 'product-tree' | 'export' | 'reports' | 'users' | 'uploaded-documents' | 'upload-document';
 
 interface SidebarProps {
   currentView: View;
@@ -22,9 +22,14 @@ interface SidebarProps {
 function Sidebar({ currentView, setCurrentView, stats, userEmail, userRole, onLogout }: SidebarProps) {
   const [isPurchasesOpen, setIsPurchasesOpen] = React.useState(false);
 
+  const [isDocumentsOpen, setIsDocumentsOpen] = React.useState(false);
+
   React.useEffect(() => {
     if (currentView === 'purchases' || currentView === 'product-tree') {
       setIsPurchasesOpen(true);
+    }
+    if (currentView === 'uploaded-documents' || currentView === 'upload-document') {
+      setIsDocumentsOpen(true);
     }
   }, [currentView]);
 
@@ -54,6 +59,51 @@ function Sidebar({ currentView, setCurrentView, stats, userEmail, userRole, onLo
             <i className="fas fa-home w-5 mr-3 text-base"></i>
             <span>Darbalaukis</span>
           </a>
+        </li>
+
+        <li className="pt-4 pb-2 px-4">
+          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Atpažinimas</span>
+        </li>
+
+        <li>
+          <button
+            onClick={() => setIsDocumentsOpen(!isDocumentsOpen)}
+            className={`nav-link flex items-center w-full px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${
+              (currentView === 'uploaded-documents' || currentView === 'upload-document') ? 'bg-indigo-50 text-indigo-700 font-medium' : ''
+            }`}
+          >
+            <i className="fas fa-cloud-upload-alt w-5 mr-3 text-base"></i>
+            <span className="flex-1 text-left">Įkelti dokumentai</span>
+            <i className={`fas fa-chevron-down text-xs transition-transform ${
+              isDocumentsOpen ? 'rotate-180' : ''
+            }`}></i>
+          </button>
+          {isDocumentsOpen && (
+            <ul className="mt-1 ml-4 space-y-1">
+              <li>
+                <a
+                  onClick={(e) => { e.preventDefault(); setCurrentView('uploaded-documents'); }}
+                  href="#"
+                  className={`nav-link flex items-center px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg text-sm ${
+                    currentView === 'uploaded-documents' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
+                  }`}
+                >
+                  <span>Sąrašas</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  onClick={(e) => { e.preventDefault(); setCurrentView('upload-document'); }}
+                  href="#"
+                  className={`nav-link flex items-center px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg text-sm ${
+                    currentView === 'upload-document' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
+                  }`}
+                >
+                  <span>Įkelti naują</span>
+                </a>
+              </li>
+            </ul>
+          )}
         </li>
 
         <li className="pt-4 pb-2 px-4">
