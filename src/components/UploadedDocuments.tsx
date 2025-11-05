@@ -121,6 +121,104 @@ export default function UploadedDocuments() {
     }
   };
 
+  const handleApproveDocument = async (docId: string) => {
+    try {
+      const document = documents.find((doc) => doc.id === docId);
+      if (!document) {
+        alert('Dokumentas nerastas');
+        return;
+      }
+
+      const documentItems = items.length > 0 ? items : await fetchItemsForApproval(docId);
+
+      if (documentItems.length === 0) {
+        alert('Nėra prekių šiame dokumente. Pridėkite prekes prieš tvirtinant.');
+        return;
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert('Vartotojas neprisijungęs');
+        return;
+      }
+
+      const { data: invoiceData, error: invoiceError } = await supabase
+        .from('purchase_invoices')
+        .insert({
+          invoice_number: document.invoice_number,
+          supplier_id: document.company_id,
+          invoice_date: document.invoice_date,
+          total_amount: document.total_amount,
+          vat_amount: document.vat_amount || 0,
+          status: 'validated',
+          file_url: document.file_url,
+          notes: document.notes,
+          company_vat_code: document.supplier_code,
+          sum_netto: document.total_amount - (document.vat_amount || 0),
+          sum_with_vat: document.total_amount,
+        })
+        .select()
+        .single();
+
+      if (invoiceError) throw invoiceError;
+
+      const invoiceLines = documentItems.map((item) => ({
+        invoice_id: invoiceData.id,
+        product_id: null,
+        description: item.item_name,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        vat_rate: item.vat_rate,
+        vat_amount: item.vat_amount,
+        total_amount: item.total_amount,
+      }));
+
+      const { error: linesError } = await supabase
+        .from('purchase_invoice_lines')
+        .insert(invoiceLines);
+
+      if (linesError) throw linesError;
+
+      const { error: updateError } = await supabase
+        .from('uploaded_documents')
+        .update({ status: 'approved' })
+        .eq('id', docId);
+
+      if (updateError) throw updateError;
+
+      alert('Dokumentas sėkmingai patvirtintas ir perkeltas į pirkimo sąskaitas!');
+
+      await fetchDocuments();
+
+      if (expandedDocumentId === docId) {
+        setExpandedDocumentId(null);
+        setItems([]);
+      }
+    } catch (error) {
+      console.error('Error approving document:', error);
+      alert('Klaida tvirtinant dokumentą. Patikrinkite ar sąskaitos numeris jau egzistuoja.');
+    }
+  };
+
+  const fetchItemsForApproval = async (documentId: string): Promise<InvoiceItem[]> => {
+    const { data, error } = await supabase
+      .from('purchase_invoice_items')
+      .select('*')
+      .eq('uploaded_document_id', documentId);
+
+    if (error) {
+      console.error('Error fetching items:', error);
+      return [];
+    }
+
+    return data || [];
+  };
+
+  const areAllItemsValid = (itemsList: InvoiceItem[]): boolean => {
+    if (itemsList.length === 0) return false;
+    return itemsList.every((item) => item.item_code && item.item_code.trim() !== '');
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
@@ -314,16 +412,37 @@ export default function UploadedDocuments() {
                           <div className="space-y-4">
                             <div className="flex items-center justify-between mb-4">
                               <h3 className="text-lg font-semibold text-gray-900">Prekių sąrašas</h3>
-                              <button
-                                onClick={() => {
-                                  setSelectedDocumentId(doc.id);
-                                  setEditMode(true);
-                                }}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                              >
-                                <i className="fas fa-edit mr-2"></i>
-                                Koreguoti
-                              </button>
+                              <div className="flex gap-2">
+                                {doc.status === 'pending' && items.length > 0 && (
+                                  <button
+                                    onClick={() => handleApproveDocument(doc.id)}
+                                    disabled={!areAllItemsValid(items)}
+                                    className={`px-4 py-2 rounded-lg transition-colors ${
+                                      areAllItemsValid(items)
+                                        ? 'bg-green-600 text-white hover:bg-green-700'
+                                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                    }`}
+                                    title={
+                                      areAllItemsValid(items)
+                                        ? 'Tvirtinti dokumentą'
+                                        : 'Visos prekės turi būti validuotos (turėti kodą)'
+                                    }
+                                  >
+                                    <i className="fas fa-check mr-2"></i>
+                                    Tvirtinti
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => {
+                                    setSelectedDocumentId(doc.id);
+                                    setEditMode(true);
+                                  }}
+                                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                >
+                                  <i className="fas fa-edit mr-2"></i>
+                                  Koreguoti
+                                </button>
+                              </div>
                             </div>
 
                             {loadingItems ? (
@@ -395,10 +514,17 @@ export default function UploadedDocuments() {
                                               {item.total_amount.toFixed(2)}
                                             </td>
                                             <td className="px-4 py-2 text-sm">
-                                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                <i className="fas fa-check mr-1"></i>
-                                                OK
-                                              </span>
+                                              {item.item_code && item.item_code.trim() !== '' ? (
+                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                  <i className="fas fa-check mr-1"></i>
+                                                  OK
+                                                </span>
+                                              ) : (
+                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                  <i className="fas fa-exclamation-triangle mr-1"></i>
+                                                  Reikia koreguoti
+                                                </span>
+                                              )}
                                             </td>
                                           </tr>
                                         ))}
