@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { supabase } from '../lib/supabase';
 import { Database } from '../types/database';
 import DocumentReview from './DocumentReview';
@@ -344,9 +344,8 @@ export default function UploadedDocuments() {
                 </tr>
               ) : (
                 filteredDocuments.map((doc) => (
-                  <>
+                  <Fragment key={doc.id}>
                     <tr
-                      key={doc.id}
                       onClick={() => handleRowClick(doc.id)}
                       className={`hover:bg-gray-50 cursor-pointer ${
                         expandedDocumentId === doc.id ? 'bg-blue-50' : ''
@@ -538,7 +537,7 @@ export default function UploadedDocuments() {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 ))
               )}
             </tbody>
