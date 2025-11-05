@@ -167,7 +167,7 @@ function App() {
         )}
 
         {currentView === 'upload-document' && (
-          <UploadDocument />
+          <UploadDocument onUploadSuccess={() => setCurrentView('uploaded-documents')} />
         )}
 
         {currentView !== 'dashboard' && currentView !== 'users' && currentView !== 'purchases' && currentView !== 'product-tree' && currentView !== 'companies' && currentView !== 'purchase-invoices' && currentView !== 'uploaded-documents' && currentView !== 'upload-document' && (

@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 
-export default function UploadDocument() {
+interface Props {
+  onUploadSuccess?: () => void;
+}
+
+export default function UploadDocument({ onUploadSuccess }: Props) {
   const [uploading, setUploading] = useState(false);
   const [uploadedCount, setUploadedCount] = useState(0);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -84,8 +88,14 @@ export default function UploadDocument() {
       if (successCount > 0) {
         setMessage({
           type: 'success',
-          text: `Sėkmingai įkelta ${successCount} ${successCount === 1 ? 'dokumentas' : 'dokumentai'}. Eikite į "Sąrašas" peržiūrėti.`,
+          text: `Sėkmingai įkelta ${successCount} ${successCount === 1 ? 'dokumentas' : 'dokumentai'}. Nukreipiama į sąrašą...`,
         });
+
+        setTimeout(() => {
+          if (onUploadSuccess) {
+            onUploadSuccess();
+          }
+        }, 1000);
       } else {
         setMessage({ type: 'error', text: 'Nepavyko įkelti nei vieno dokumento.' });
       }
@@ -162,7 +172,7 @@ export default function UploadDocument() {
             <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
               <li>Pasirinkite vieną ar kelis failus iš karto</li>
               <li>Failai bus automatiškai įkelti į sistemą</li>
-              <li>Eikite į "Sąrašas" peržiūrėti įkeltus dokumentus</li>
+              <li>Po įkėlimo būsite automatiškai nukreipti į dokumentų sąrašą</li>
               <li>Paspauskite ant dokumento eilutės, kad užpildytumėte duomenis</li>
             </ol>
           </div>
