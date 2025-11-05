@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { DateInput } from './DateInput';
 
 interface Invoice {
   id: string;
@@ -413,16 +414,13 @@ function Purchases({ userRole }: PurchasesProps) {
                     required
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Data</label>
-                  <input
-                    type="date"
-                    value={newInvoice.invoice_date}
-                    onChange={(e) => setNewInvoice({ ...newInvoice, invoice_date: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  />
-                </div>
+                <DateInput
+                  label="Data"
+                  value={newInvoice.invoice_date}
+                  onChange={(value) => setNewInvoice({ ...newInvoice, invoice_date: value })}
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Suma</label>
                   <input
