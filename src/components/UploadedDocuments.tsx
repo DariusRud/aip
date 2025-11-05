@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Database } from '../types/database';
 import DocumentReview from './DocumentReview';
+import DocumentEdit from './DocumentEdit';
 
 type UploadedDocument = Database['public']['Tables']['uploaded_documents']['Row'] & {
   companies?: {
@@ -17,6 +18,7 @@ export default function UploadedDocuments() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState(false);
 
   useEffect(() => {
     fetchDocuments();
@@ -175,7 +177,14 @@ export default function UploadedDocuments() {
                 </tr>
               ) : (
                 filteredDocuments.map((doc) => (
-                  <tr key={doc.id} className="hover:bg-gray-50">
+                  <tr
+                    key={doc.id}
+                    onClick={() => {
+                      setSelectedDocumentId(doc.id);
+                      setEditMode(doc.status === 'pending');
+                    }}
+                    className="hover:bg-gray-50 cursor-pointer"
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
@@ -194,20 +203,24 @@ export default function UploadedDocuments() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {doc.invoice_number}
+                      {doc.invoice_number || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(doc.invoice_date).toLocaleDateString('lt-LT')}
+                      {doc.invoice_date ? new Date(doc.invoice_date).toLocaleDateString('lt-LT') : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {doc.total_amount.toFixed(2)} {doc.currency}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
-                        onClick={() => setSelectedDocumentId(doc.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedDocumentId(doc.id);
+                          setEditMode(doc.status === 'pending');
+                        }}
                         className="text-blue-600 hover:text-blue-900"
                       >
-                        Peržiūrėti
+                        {doc.status === 'pending' ? 'Koreguoti' : 'Peržiūrėti'}
                       </button>
                     </td>
                   </tr>
@@ -218,12 +231,31 @@ export default function UploadedDocuments() {
         </div>
       )}
 
-      {selectedDocumentId && (
+      {selectedDocumentId && editMode && (
+        <DocumentEdit
+          documentId={selectedDocumentId}
+          onClose={() => {
+            setSelectedDocumentId(null);
+            setEditMode(false);
+          }}
+          onSaved={() => {
+            setSelectedDocumentId(null);
+            setEditMode(false);
+            fetchDocuments();
+          }}
+        />
+      )}
+
+      {selectedDocumentId && !editMode && (
         <DocumentReview
           documentId={selectedDocumentId}
-          onClose={() => setSelectedDocumentId(null)}
+          onClose={() => {
+            setSelectedDocumentId(null);
+            setEditMode(false);
+          }}
           onApproved={() => {
             setSelectedDocumentId(null);
+            setEditMode(false);
             fetchDocuments();
           }}
         />
