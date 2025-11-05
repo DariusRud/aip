@@ -25,7 +25,7 @@ export function DateInput({ value, onChange, required, className, label }: DateI
       <div className="relative">
         <input
           type="text"
-          value={value || 'YYYY-MM-DD'}
+          value={value}
           readOnly
           onClick={handleClick}
           placeholder="YYYY-MM-DD"
@@ -37,7 +37,8 @@ export function DateInput({ value, onChange, required, className, label }: DateI
           value={value}
           onChange={(e) => onChange(e.target.value)}
           required={required}
-          className="absolute inset-0 opacity-0 cursor-pointer"
+          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+          style={{ zIndex: 10 }}
         />
       </div>
     </div>
