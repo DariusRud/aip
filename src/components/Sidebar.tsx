@@ -1,0 +1,154 @@
+interface Stats {
+  needsReview: number;
+  todayUploaded: number;
+  todayValidated: number;
+  todayExported: number;
+  todayCorrections: number;
+}
+
+type View = 'dashboard' | 'purchase-invoices' | 'sales-invoices' | 'companies' | 'products' | 'export' | 'reports';
+
+interface SidebarProps {
+  currentView: View;
+  setCurrentView: (view: View) => void;
+  stats: Stats;
+}
+
+function Sidebar({ currentView, setCurrentView, stats }: SidebarProps) {
+  return (
+    <nav className="w-64 sidebar flex flex-col">
+      <div className="p-6">
+        <div className="flex items-center gap-2 mb-6">
+          <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center">
+            <span className="text-white font-bold text-sm">AI</span>
+          </div>
+          <div>
+            <span className="text-xl font-semibold text-slate-800 block leading-none">AIPLENK</span>
+            <span className="text-xs text-slate-500">v1.0.0</span>
+          </div>
+        </div>
+      </div>
+
+      <ul className="flex-grow px-3 space-y-1">
+        <li>
+          <a
+            onClick={(e) => { e.preventDefault(); setCurrentView('dashboard'); }}
+            href="#"
+            className={`nav-link flex items-center px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${
+              currentView === 'dashboard' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
+            }`}
+          >
+            <i className="fas fa-home w-5 mr-3 text-base"></i>
+            <span>Darbalaukis</span>
+          </a>
+        </li>
+
+        <li className="pt-4 pb-2 px-4">
+          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Dokumentai</span>
+        </li>
+
+        <li>
+          <a
+            onClick={(e) => { e.preventDefault(); setCurrentView('purchase-invoices'); }}
+            href="#"
+            className={`nav-link flex items-center px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${
+              currentView === 'purchase-invoices' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
+            }`}
+          >
+            <i className="fas fa-file-invoice w-5 mr-3 text-base"></i>
+            <span>Pirkimo Sąskaitos</span>
+            {stats.needsReview > 0 && (
+              <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                {stats.needsReview}
+              </span>
+            )}
+          </a>
+        </li>
+
+        <li>
+          <a
+            onClick={(e) => { e.preventDefault(); setCurrentView('sales-invoices'); }}
+            href="#"
+            className={`nav-link flex items-center px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${
+              currentView === 'sales-invoices' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
+            }`}
+          >
+            <i className="fas fa-receipt w-5 mr-3 text-base"></i>
+            <span>Pardavimo Sąskaitos</span>
+          </a>
+        </li>
+
+        <li className="pt-4 pb-2 px-4">
+          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sistema</span>
+        </li>
+
+        <li>
+          <a
+            onClick={(e) => { e.preventDefault(); setCurrentView('companies'); }}
+            href="#"
+            className={`nav-link flex items-center px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${
+              currentView === 'companies' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
+            }`}
+          >
+            <i className="fas fa-building w-5 mr-3 text-base"></i>
+            <span>Įmonės</span>
+          </a>
+        </li>
+
+        <li>
+          <a
+            onClick={(e) => { e.preventDefault(); setCurrentView('products'); }}
+            href="#"
+            className={`nav-link flex items-center px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${
+              currentView === 'products' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
+            }`}
+          >
+            <i className="fas fa-boxes w-5 mr-3 text-base"></i>
+            <span>Prekių Medis</span>
+          </a>
+        </li>
+
+        <li>
+          <a
+            onClick={(e) => { e.preventDefault(); setCurrentView('export'); }}
+            href="#"
+            className={`nav-link flex items-center px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${
+              currentView === 'export' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
+            }`}
+          >
+            <i className="fas fa-file-export w-5 mr-3 text-base"></i>
+            <span>Eksportai</span>
+          </a>
+        </li>
+
+        <li>
+          <a
+            onClick={(e) => { e.preventDefault(); setCurrentView('reports'); }}
+            href="#"
+            className={`nav-link flex items-center px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${
+              currentView === 'reports' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
+            }`}
+          >
+            <i className="fas fa-chart-bar w-5 mr-3 text-base"></i>
+            <span>Ataskaitos</span>
+          </a>
+        </li>
+      </ul>
+
+      <div className="p-4 border-t border-slate-200">
+        <div className="flex items-center gap-3 px-2 py-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors">
+          <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center text-white font-semibold text-sm">
+            MP
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium text-slate-700 truncate">Mantas Petraitis</div>
+            <div className="text-xs text-slate-500">Administrator</div>
+          </div>
+          <i className="fas fa-sign-out-alt text-slate-400 hover:text-red-500 transition-colors"></i>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+export default Sidebar;
