@@ -18,6 +18,10 @@ interface DocumentItem {
 }
 
 export default function UploadDocument() {
+  const [step, setStep] = useState<'upload' | 'edit'>('upload');
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [fileUrl, setFileUrl] = useState<string>('');
+
   const [companies, setCompanies] = useState<Company[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [loading, setLoading] = useState(false);
@@ -65,6 +69,54 @@ export default function UploadDocument() {
   const fetchCategories = async () => {
     const { data } = await supabase.from('product_categories').select('*').order('name');
     if (data) setCategories(data);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+      if (!validTypes.includes(file.type)) {
+        setMessage({ type: 'error', text: 'Netinkamas failo tipas. Palaikomi: PDF, JPG, PNG' });
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setMessage({ type: 'error', text: 'Failas per didelis. Maksimalus dydis: 10MB' });
+        return;
+      }
+      setUploadedFile(file);
+      setMessage(null);
+    }
+  };
+
+  const handleFileUpload = async () => {
+    if (!uploadedFile) return;
+
+    try {
+      setLoading(true);
+      setMessage(null);
+
+      const fileExt = uploadedFile.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `documents/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('invoices')
+        .upload(filePath, uploadedFile);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('invoices')
+        .getPublicUrl(filePath);
+
+      setFileUrl(publicUrl);
+      setStep('edit');
+      setMessage({ type: 'success', text: 'Failas įkeltas! Dabar užpildykite duomenis.' });
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const calculateItemAmounts = (item: DocumentItem) => {
@@ -138,9 +190,14 @@ export default function UploadDocument() {
 
       const selectedCompany = companies.find((c) => c.id === formData.company_id);
 
+      const fileType = uploadedFile?.type.includes('pdf') ? 'pdf' : 'image';
+
       const { data: document, error: docError } = await supabase
         .from('uploaded_documents')
         .insert({
+          file_url: fileUrl || null,
+          file_name: uploadedFile?.name || null,
+          file_type: fileType,
           company_id: formData.company_id,
           supplier_name: selectedCompany?.name || '',
           supplier_code: selectedCompany?.code || '',
@@ -179,30 +236,35 @@ export default function UploadDocument() {
 
       setMessage({ type: 'success', text: 'Dokumentas sėkmingai įkeltas!' });
 
-      setFormData({
-        company_id: '',
-        invoice_number: '',
-        invoice_date: '',
-        due_date: '',
-        amount_no_vat: 0,
-        vat_amount: 0,
-        total_amount: 0,
-        notes: '',
-      });
-
-      setItems([
-        {
-          id: crypto.randomUUID(),
-          description: '',
-          quantity: 1,
-          unit: 'vnt',
-          unit_price: 0,
-          vat_rate: 21,
+      setTimeout(() => {
+        setStep('upload');
+        setUploadedFile(null);
+        setFileUrl('');
+        setFormData({
+          company_id: '',
+          invoice_number: '',
+          invoice_date: '',
+          due_date: '',
           amount_no_vat: 0,
-          amount_with_vat: 0,
-          category_id: null,
-        },
-      ]);
+          vat_amount: 0,
+          total_amount: 0,
+          notes: '',
+        });
+        setItems([
+          {
+            id: crypto.randomUUID(),
+            description: '',
+            quantity: 1,
+            unit: 'vnt',
+            unit_price: 0,
+            vat_rate: 21,
+            amount_no_vat: 0,
+            amount_with_vat: 0,
+            category_id: null,
+          },
+        ]);
+        setMessage(null);
+      }, 2000);
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message });
     } finally {
@@ -210,12 +272,89 @@ export default function UploadDocument() {
     }
   };
 
+  if (step === 'upload') {
+    return (
+      <div className="p-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Įkelti naują dokumentą</h1>
+            <p className="text-gray-600">Įkelkite sąskaitos PDF arba nuotrauką</p>
+          </div>
+
+          {message && (
+            <div
+              className={`mb-6 p-4 rounded-lg ${
+                message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+              }`}
+            >
+              {message.text}
+            </div>
+          )}
+
+          <div className="bg-white p-8 rounded-lg shadow">
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
+              <i className="fas fa-cloud-upload-alt text-6xl text-gray-400 mb-4"></i>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Įkelkite dokumento failą
+              </h3>
+              <p className="text-gray-600 mb-6">PDF, JPG arba PNG (maks. 10MB)</p>
+
+              <input
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                onChange={handleFileChange}
+                className="hidden"
+                id="file-upload"
+              />
+              <label
+                htmlFor="file-upload"
+                className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors"
+              >
+                Pasirinkti failą
+              </label>
+
+              {uploadedFile && (
+                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-center gap-3">
+                    <i className="fas fa-file text-blue-600 text-2xl"></i>
+                    <div className="text-left">
+                      <p className="font-medium text-gray-900">{uploadedFile.name}</p>
+                      <p className="text-sm text-gray-500">
+                        {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleFileUpload}
+                    disabled={loading}
+                    className="mt-4 w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium transition-colors"
+                  >
+                    {loading ? 'Įkeliama...' : 'Tęsti → Užpildyti duomenis'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-8">
       <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Įkelti naują dokumentą</h1>
-          <p className="text-gray-600">Rankiniu būdu įveskite dokumento duomenis</p>
+        <div className="mb-8 flex items-center gap-4">
+          <button
+            onClick={() => setStep('upload')}
+            className="text-gray-600 hover:text-gray-900"
+          >
+            <i className="fas fa-arrow-left mr-2"></i>
+            Atgal
+          </button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Koreguoti dokumentą</h1>
+            <p className="text-gray-600">Užpildykite dokumento duomenis rankiniu būdu</p>
+          </div>
         </div>
 
         {message && (
@@ -339,7 +478,7 @@ export default function UploadDocument() {
                         type="number"
                         step="0.001"
                         value={item.quantity}
-                        onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value))}
+                        onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -364,7 +503,7 @@ export default function UploadDocument() {
                         type="number"
                         step="0.01"
                         value={item.unit_price}
-                        onChange={(e) => updateItem(item.id, 'unit_price', parseFloat(e.target.value))}
+                        onChange={(e) => updateItem(item.id, 'unit_price', parseFloat(e.target.value) || 0)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -454,7 +593,7 @@ export default function UploadDocument() {
               disabled={loading}
               className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium transition-colors"
             >
-              {loading ? 'Įkeliama...' : 'Įkelti į sistemą'}
+              {loading ? 'Išsaugoma...' : 'Išsaugoti dokumentą'}
             </button>
           </div>
         </form>
