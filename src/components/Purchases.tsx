@@ -416,11 +416,9 @@ function Purchases({ userRole }: PurchasesProps) {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Data</label>
                   <input
-                    type="text"
+                    type="date"
                     value={newInvoice.invoice_date}
                     onChange={(e) => setNewInvoice({ ...newInvoice, invoice_date: e.target.value })}
-                    placeholder="YYYY-MM-DD"
-                    maxLength={10}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     required
                   />

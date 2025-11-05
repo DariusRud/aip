@@ -125,3 +125,27 @@ body {
     transform: scale(1);
   }
 }
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+}
+
+input[type="date"] {
+  position: relative;
+}
+
+input[type="date"]::-webkit-datetime-edit {
+  position: relative;
+  display: inline-flex;
+}
+
+input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  position: relative;
+}
+
+input[type="date"]::-webkit-datetime-edit-text,
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-day-field,
+input[type="date"]::-webkit-datetime-edit-year-field {
+  position: relative;
+}
