@@ -59,6 +59,8 @@ export default function Users({ currentUserRole }: UsersProps) {
     }
 
     try {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: newEmail,
         password: newPassword,
@@ -78,6 +80,13 @@ export default function Users({ currentUserRole }: UsersProps) {
           .eq('id', authData.user.id);
 
         if (profileError) throw profileError;
+      }
+
+      if (currentSession) {
+        await supabase.auth.setSession({
+          access_token: currentSession.access_token,
+          refresh_token: currentSession.refresh_token,
+        });
       }
 
       setShowAddModal(false);
