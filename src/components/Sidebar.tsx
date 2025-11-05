@@ -6,15 +6,18 @@ interface Stats {
   todayCorrections: number;
 }
 
-type View = 'dashboard' | 'purchase-invoices' | 'sales-invoices' | 'companies' | 'products' | 'export' | 'reports';
+type View = 'dashboard' | 'purchase-invoices' | 'sales-invoices' | 'companies' | 'products' | 'export' | 'reports' | 'users';
 
 interface SidebarProps {
   currentView: View;
   setCurrentView: (view: View) => void;
   stats: Stats;
+  userEmail: string;
+  userRole: string;
+  onLogout: () => void;
 }
 
-function Sidebar({ currentView, setCurrentView, stats }: SidebarProps) {
+function Sidebar({ currentView, setCurrentView, stats, userEmail, userRole, onLogout }: SidebarProps) {
   return (
     <nav className="w-64 sidebar flex flex-col">
       <div className="p-6">
@@ -133,18 +136,37 @@ function Sidebar({ currentView, setCurrentView, stats }: SidebarProps) {
             <span>Ataskaitos</span>
           </a>
         </li>
+
+        <li>
+          <a
+            onClick={(e) => { e.preventDefault(); setCurrentView('users'); }}
+            href="#"
+            className={`nav-link flex items-center px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${
+              currentView === 'users' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
+            }`}
+          >
+            <i className="fas fa-users w-5 mr-3 text-base"></i>
+            <span>Vartotojai</span>
+          </a>
+        </li>
       </ul>
 
       <div className="p-4 border-t border-slate-200">
-        <div className="flex items-center gap-3 px-2 py-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors">
+        <div className="flex items-center gap-3 px-2 py-2 rounded-lg">
           <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center text-white font-semibold text-sm">
-            MP
+            {userEmail.substring(0, 2).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-slate-700 truncate">Mantas Petraitis</div>
-            <div className="text-xs text-slate-500">Administrator</div>
+            <div className="text-sm font-medium text-slate-700 truncate">{userEmail}</div>
+            <div className="text-xs text-slate-500">{userRole === 'admin' ? 'Administratorius' : 'Vartotojas'}</div>
           </div>
-          <i className="fas fa-sign-out-alt text-slate-400 hover:text-red-500 transition-colors"></i>
+          <button
+            onClick={onLogout}
+            className="text-slate-400 hover:text-red-500 transition-colors"
+            title="Atsijungti"
+          >
+            <i className="fas fa-sign-out-alt"></i>
+          </button>
         </div>
       </div>
     </nav>
