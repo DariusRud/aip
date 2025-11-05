@@ -88,14 +88,8 @@ export default function UploadDocument({ onUploadSuccess }: Props) {
       if (successCount > 0) {
         setMessage({
           type: 'success',
-          text: `Sėkmingai įkelta ${successCount} ${successCount === 1 ? 'dokumentas' : 'dokumentai'}. Nukreipiama į sąrašą...`,
+          text: `Sėkmingai įkelta ${successCount} ${successCount === 1 ? 'dokumentas' : 'dokumentai'}.`,
         });
-
-        setTimeout(() => {
-          if (onUploadSuccess) {
-            onUploadSuccess();
-          }
-        }, 1000);
       } else {
         setMessage({ type: 'error', text: 'Nepavyko įkelti nei vieno dokumento.' });
       }
@@ -121,10 +115,26 @@ export default function UploadDocument({ onUploadSuccess }: Props) {
         {message && (
           <div
             className={`mb-6 p-4 rounded-lg ${
-              message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+              message.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
             }`}
           >
-            {message.text}
+            <div className="flex items-center justify-between">
+              <div className={message.type === 'success' ? 'text-green-800' : 'text-red-800'}>
+                {message.type === 'success' && (
+                  <i className="fas fa-check-circle mr-2"></i>
+                )}
+                {message.text}
+              </div>
+              {message.type === 'success' && onUploadSuccess && (
+                <button
+                  onClick={onUploadSuccess}
+                  className="ml-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                >
+                  <span>Eiti į sąrašą</span>
+                  <i className="fas fa-arrow-right"></i>
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -172,8 +182,8 @@ export default function UploadDocument({ onUploadSuccess }: Props) {
             <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
               <li>Pasirinkite vieną ar kelis failus iš karto</li>
               <li>Failai bus automatiškai įkelti į sistemą</li>
-              <li>Po įkėlimo būsite automatiškai nukreipti į dokumentų sąrašą</li>
-              <li>Paspauskite ant dokumento eilutės, kad užpildytumėte duomenis</li>
+              <li>Galite įkelti papildomų dokumentų arba eiti į sąrašą</li>
+              <li>Sąraše paspauskite ant eilutės, kad užpildytumėte duomenis</li>
             </ol>
           </div>
         </div>
