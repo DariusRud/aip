@@ -289,12 +289,44 @@ function Companies({ userRole }: CompaniesProps) {
       )}
 
       <div className="flex-1 overflow-y-auto p-8">
-        {companies.length === 0 ? (
-          <div className="text-center py-12 text-slate-400">
-            <i className="fas fa-building text-4xl mb-4"></i>
-            <p>Nėra sukurtų įmonių</p>
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 mb-4">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  {userRole === 'admin' && (
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700 w-10">
+                      <input type="checkbox" className="w-4 h-4 text-blue-600 rounded" disabled />
+                    </th>
+                  )}
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">PAVADINIMAS</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">TIPAS</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">ADRESAS</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">MIESTAS</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">PAŠTO KODAS</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">ĮMONĖS KODAS</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">PVM KODAS</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">ŠALIS</th>
+                  {userRole === 'admin' && (
+                    <th className="text-center py-3 px-4 text-sm font-semibold text-slate-700">VEIKSMAI</th>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {companies.length === 0 && (
+                  <tr>
+                    <td colSpan={userRole === 'admin' ? 10 : 9} className="text-center py-12 text-slate-400">
+                      <i className="fas fa-building text-4xl mb-4 block"></i>
+                      <p>Nėra sukurtų įmonių</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
-        ) : (
+        </div>
+
+        {companies.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {companies.map((company) => (
               <div
