@@ -6,7 +6,8 @@ interface Stats {
   todayCorrections: number;
 }
 
-type View = 'dashboard' | 'purchase-invoices' | 'sales-invoices' | 'companies' | 'purchases' | 'product-tree' | 'export' | 'reports';
+// Pakeičiau View tipą, kad atitiktų pilną App.tsx tipą
+type View = 'dashboard' | 'upload-document' | 'unprocessed-invoices' | 'purchase-invoices' | 'sales-invoices' | 'purchase-items' | 'sales-items' | 'product-tree' | 'companies' | 'export' | 'reports' | 'settings-company' | 'settings-users' | 'settings-clients';
 
 interface DashboardProps {
   currentDate: string;
@@ -18,24 +19,29 @@ interface DashboardProps {
 function Dashboard({ currentDate, stats, setShowUploadModal, setCurrentView }: DashboardProps) {
   return (
     <>
+      {/* PAKEITIMAI ATLIKTI ŠIAME BLOKE:
+        1. Pašalintas "Pranešimai" mygtukas.
+        2. "Įkelti Sąskaitą" pervadinta į "Įkelti dokumentus".
+        3. Pakeistas onClick, kad nukreiptų į 'upload-document' vaizdą, o ne atidarytų modalą.
+      */}
       <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-8 py-6">
         <div className="max-w-7xl mx-auto flex justify-between items-start">
           <div>
+            {/* Ši antraštė dabar dubliuojasi su Header, bet paliekame ją kol kas */}
             <h1 className="text-3xl font-bold text-slate-800 mb-1">Darbalaukis</h1>
             <p className="text-slate-500 time-display">{currentDate}</p>
           </div>
           <div className="flex gap-3">
-            <button className="px-4 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2">
-              <i className="fas fa-bell text-slate-600"></i>
-              <span className="text-sm font-medium text-slate-700">Pranešimai</span>
-              <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">3</span>
-            </button>
+            
+            {/* 1. "Pranešimai" mygtukas pašalintas iš čia */}
+
+            {/* 2. "Įkelti Sąskaitą" mygtukas pataisytas */}
             <button
-              onClick={() => setShowUploadModal(true)}
+              onClick={() => setCurrentView('upload-document')} // Pakeistas veiksmas
               className="px-5 py-2 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-lg hover:from-indigo-700 hover:to-indigo-600 transition-all shadow-sm flex items-center gap-2 quick-action"
             >
               <i className="fas fa-plus text-sm"></i>
-              <span className="font-medium">Įkelti Sąskaitą</span>
+              <span className="font-medium">Įkelti dokumentus</span> 
             </button>
           </div>
         </div>
@@ -43,6 +49,8 @@ function Dashboard({ currentDate, stats, setShowUploadModal, setCurrentView }: D
 
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-7xl mx-auto p-8">
+
+      {/* --- LIKUSI KODO DALIS NESIKEIČIA --- */}
 
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-4">
@@ -64,7 +72,7 @@ function Dashboard({ currentDate, stats, setShowUploadModal, setCurrentView }: D
                 <p className="text-sm text-slate-600">Sąskaitos su neatpažintomis arba nepatvirtintomis eilutėmis</p>
               </div>
               <button
-                onClick={() => setCurrentView('purchase-invoices')}
+                onClick={() => setCurrentView('unprocessed-invoices')} // Pataisytas view
                 className="px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors font-medium text-sm"
               >
                 Peržiūrėti →
@@ -84,7 +92,9 @@ function Dashboard({ currentDate, stats, setShowUploadModal, setCurrentView }: D
                 </div>
                 <p className="text-sm text-slate-600">Reikalingas rankinis susiejimas su prekių katalogu</p>
               </div>
-              <button className="px-4 py-2 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 transition-colors font-medium text-sm">
+              <button 
+                onClick={() => setCurrentView('product-tree')} // Nukreipiam į prekių medį
+                className="px-4 py-2 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 transition-colors font-medium text-sm">
                 Valdyti →
               </button>
             </div>
@@ -102,7 +112,9 @@ function Dashboard({ currentDate, stats, setShowUploadModal, setCurrentView }: D
                 </div>
                 <p className="text-sm text-slate-600">UAB "Statybų Partneris", UAB "Nežinomi Įrankiai", UAB "Tvirtas Varžtas"</p>
               </div>
-              <button className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors font-medium text-sm">
+              <button 
+                onClick={() => setCurrentView('companies')} // Nukreipiam į Įmones
+                className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors font-medium text-sm">
                 Analizuoti →
               </button>
             </div>
@@ -165,13 +177,13 @@ function Dashboard({ currentDate, stats, setShowUploadModal, setCurrentView }: D
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
-            onClick={() => setShowUploadModal(true)}
+            onClick={() => setCurrentView('upload-document')} // Pakeistas veiksmas
             className="card p-6 text-left hover:shadow-lg transition-all group"
           >
             <div className="w-12 h-12 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <i className="fas fa-upload text-indigo-600 text-xl"></i>
             </div>
-            <h3 className="text-lg font-semibold text-slate-800 mb-2">Įkelti Sąskaitą</h3>
+            <h3 className="text-lg font-semibold text-slate-800 mb-2">Įkelti dokumentus</h3> 
             <p className="text-sm text-slate-600">Įkelkite naują pirkimo ar pardavimo sąskaitą</p>
           </button>
 

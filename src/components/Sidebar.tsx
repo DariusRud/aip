@@ -1,262 +1,292 @@
 import React from 'react';
 
+// Tipas paimtas iš App.tsx (svarbu, kad sutaptų)
+type View = 'dashboard' | 'upload-document' | 'unprocessed-invoices' | 'purchase-invoices' | 'sales-invoices' | 'purchase-items' | 'sales-items' | 'product-tree' | 'companies' | 'export' | 'reports' | 'settings-company' | 'settings-users' | 'settings-clients';
+
 interface Stats {
   needsReview: number;
-  todayUploaded: number;
-  todayValidated: number;
-  todayExported: number;
-  todayCorrections: number;
 }
 
-type View = 'dashboard' | 'purchase-invoices' | 'sales-invoices' | 'companies' | 'purchases' | 'product-tree' | 'export' | 'reports' | 'users' | 'uploaded-documents' | 'upload-document';
-
+// PAKEITIMAS: Pašalinti props'ai, kurie perkelti į Header
 interface SidebarProps {
   currentView: View;
   setCurrentView: (view: View) => void;
   stats: Stats;
-  userEmail: string;
-  userRole: string;
-  onLogout: () => void;
 }
 
-function Sidebar({ currentView, setCurrentView, stats, userEmail, userRole, onLogout }: SidebarProps) {
-  const [isPurchasesOpen, setIsPurchasesOpen] = React.useState(false);
-
-  const [isDocumentsOpen, setIsDocumentsOpen] = React.useState(false);
+function Sidebar({ currentView, setCurrentView, stats }: SidebarProps) {
+  
+  const [openMenus, setOpenMenus] = React.useState({
+      atpazinimas: false,
+      pirkimai: false,
+      pardavimai: false,
+      nustatymai: false,
+  });
 
   React.useEffect(() => {
-    if (currentView === 'purchases' || currentView === 'product-tree') {
-      setIsPurchasesOpen(true);
-    }
-    if (currentView === 'uploaded-documents' || currentView === 'upload-document') {
-      setIsDocumentsOpen(true);
-    }
+    const activeSection = {
+        atpazinimas: currentView === 'unprocessed-invoices' || currentView === 'upload-document',
+        pirkimai: currentView === 'purchase-invoices' || currentView === 'purchase-items' || currentView === 'product-tree',
+        pardavimai: currentView === 'sales-invoices' || currentView === 'sales-items' || currentView.includes('product-tree'),
+        nustatymai: currentView === 'settings-company' || currentView === 'settings-users' || currentView === 'settings-clients',
+    };
+    setOpenMenus(activeSection);
   }, [currentView]);
+  
+  const toggleMenu = (menuKey: keyof typeof openMenus) => {
+    setOpenMenus(prev => {
+        const newState = Object.fromEntries(
+            Object.keys(prev).map(key => [key, false])
+        ) as typeof openMenus;
+        return {
+            ...newState,
+            [menuKey]: !prev[menuKey]
+        };
+    });
+  };
+  
+  const isActive = (viewName: View) => currentView === viewName;
 
   return (
-    <nav className="w-64 sidebar flex flex-col">
-      <div className="p-6">
-        <div className="flex items-center gap-2 mb-6">
-          <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center">
-            <span className="text-white font-bold text-sm">AI</span>
-          </div>
-          <div>
-            <span className="text-xl font-semibold text-slate-800 block leading-none">AIPLENK</span>
-            <span className="text-xs text-slate-500">v1.0.0</span>
-          </div>
-        </div>
-      </div>
-
-      <ul className="flex-grow px-3 space-y-1">
+    <nav className="w-64 sidebar flex flex-col bg-white border-r border-slate-200">
+      
+      {/* Meniu sąrašas */}
+      <ul className="flex-grow px-3 space-y-1 overflow-y-auto pt-6">
+        
+        {/* 1. DARBALAUKIS */}
         <li>
           <a
             onClick={(e) => { e.preventDefault(); setCurrentView('dashboard'); }}
             href="#"
-            className={`nav-link flex items-center px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${
-              currentView === 'dashboard' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
-            }`}
+            className={`nav-link ${isActive('dashboard') ? 'active bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'} flex items-center px-4 py-3 rounded-lg`}
           >
             <i className="fas fa-home w-5 mr-3 text-base"></i>
             <span>Darbalaukis</span>
           </a>
         </li>
 
+        {/* 2. ATPAŽINIMAS (GAVIMAS) */}
         <li className="pt-4 pb-2 px-4">
           <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Atpažinimas</span>
         </li>
-
+        
         <li>
-          <button
-            onClick={() => setIsDocumentsOpen(!isDocumentsOpen)}
-            className={`nav-link flex items-center w-full px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${
-              (currentView === 'uploaded-documents' || currentView === 'upload-document') ? 'bg-indigo-50 text-indigo-700 font-medium' : ''
-            }`}
-          >
-            <i className="fas fa-cloud-upload-alt w-5 mr-3 text-base"></i>
-            <span className="flex-1 text-left">Įkelti dokumentai</span>
-            <i className={`fas fa-chevron-down text-xs transition-transform ${
-              isDocumentsOpen ? 'rotate-180' : ''
-            }`}></i>
-          </button>
-          {isDocumentsOpen && (
-            <ul className="mt-1 ml-4 space-y-1">
-              <li>
-                <a
-                  onClick={(e) => { e.preventDefault(); setCurrentView('uploaded-documents'); }}
-                  href="#"
-                  className={`nav-link flex items-center px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg text-sm ${
-                    currentView === 'uploaded-documents' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
-                  }`}
-                >
-                  <span>Sąrašas</span>
-                </a>
-              </li>
-              <li>
-                <a
-                  onClick={(e) => { e.preventDefault(); setCurrentView('upload-document'); }}
-                  href="#"
-                  className={`nav-link flex items-center px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg text-sm ${
-                    currentView === 'upload-document' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
-                  }`}
-                >
-                  <span>Įkelti naują</span>
-                </a>
-              </li>
-            </ul>
-          )}
+            <button
+                onClick={() => toggleMenu('atpazinimas')}
+                className={`nav-link flex items-center w-full px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${openMenus.atpazinimas ? 'bg-indigo-50 text-indigo-700 font-medium' : ''}`}
+            >
+                <i className="fas fa-cloud-upload-alt w-5 mr-3 text-base"></i>
+                <span className="flex-1 text-left">Įkelti dokumentai</span>
+                <i className={`fas fa-chevron-down text-xs transition-transform ${openMenus.atpazinimas ? 'rotate-180' : ''}`}></i>
+            </button>
+            {openMenus.atpazinimas && (
+                <ul className="mt-1 ml-4 space-y-1">
+                    <li>
+                        <a
+                            onClick={(e) => { e.preventDefault(); setCurrentView('unprocessed-invoices'); }}
+                            href="#"
+                            className={`nav-link flex items-center px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg text-sm ${isActive('unprocessed-invoices') ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''}`}
+                        >
+                            <span>Sąskaitos</span>
+                            {stats.needsReview > 0 && (
+                                <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                    {stats.needsReview}
+                                </span>
+                            )}
+                        </a>
+                    </li>
+                    <li>
+                        <a
+                            onClick={(e) => { e.preventDefault(); setCurrentView('upload-document'); }}
+                            href="#"
+                            className={`nav-link flex items-center px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg text-sm ${isActive('upload-document') ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''}`}
+                        >
+                            <span>Įkelti dokumentus</span>
+                        </a>
+                    </li>
+                </ul>
+            )}
         </li>
 
+        {/* 3. DOKUMENTAI */}
         <li className="pt-4 pb-2 px-4">
           <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Dokumentai</span>
         </li>
 
+        {/* 3A. PIRKIMAI */}
         <li>
-          <a
-            onClick={(e) => { e.preventDefault(); setCurrentView('purchase-invoices'); }}
-            href="#"
-            className={`nav-link flex items-center px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${
-              currentView === 'purchase-invoices' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
-            }`}
-          >
-            <i className="fas fa-file-invoice w-5 mr-3 text-base"></i>
-            <span>Pirkimo Sąskaitos</span>
-            {stats.needsReview > 0 && (
-              <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                {stats.needsReview}
-              </span>
+            <button
+                onClick={() => toggleMenu('pirkimai')}
+                className={`nav-link flex items-center w-full px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${openMenus.pirkimai ? 'bg-indigo-50 text-indigo-700 font-medium' : ''}`}
+            >
+                <i className="fas fa-shopping-cart w-5 mr-3 text-base"></i>
+                <span className="flex-1 text-left">Pirkimai</span>
+                <i className={`fas fa-chevron-down text-xs transition-transform ${openMenus.pirkimai ? 'rotate-180' : ''}`}></i>
+            </button>
+            {openMenus.pirkimai && (
+                <ul className="mt-1 ml-4 space-y-1">
+                    <li>
+                        <a
+                            onClick={(e) => { e.preventDefault(); setCurrentView('purchase-invoices'); }}
+                            href="#"
+                            className={`nav-link flex items-center px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg text-sm ${isActive('purchase-invoices') ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''}`}
+                        >
+                            <span>Pirkimo sąskaitos</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a
+                            onClick={(e) => { e.preventDefault(); setCurrentView('purchase-items'); }}
+                            href="#"
+                            className={`nav-link flex items-center px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg text-sm ${isActive('purchase-items') ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''}`}
+                        >
+                            <span>Perkamos prekės</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a
+                            onClick={(e) => { e.preventDefault(); setCurrentView('product-tree'); }}
+                            href="#"
+                            className={`nav-link flex items-center px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg text-sm ${isActive('product-tree') ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''}`}
+                        >
+                            <span>Prekių medis</span>
+                        </a>
+                    </li>
+                </ul>
             )}
-          </a>
         </li>
-
+        
+        {/* 3B. PARDAVIMAI */}
         <li>
-          <a
-            onClick={(e) => { e.preventDefault(); setCurrentView('sales-invoices'); }}
-            href="#"
-            className={`nav-link flex items-center px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${
-              currentView === 'sales-invoices' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
-            }`}
-          >
-            <i className="fas fa-receipt w-5 mr-3 text-base"></i>
-            <span>Pardavimo Sąskaitos</span>
-          </a>
+            <button
+                onClick={() => toggleMenu('pardavimai')}
+                className={`nav-link flex items-center w-full px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${openMenus.pardavimai ? 'bg-indigo-50 text-indigo-700 font-medium' : ''}`}
+            >
+                <i className="fas fa-receipt w-5 mr-3 text-base"></i>
+                <span className="flex-1 text-left">Pardavimai</span>
+                <i className={`fas fa-chevron-down text-xs transition-transform ${openMenus.pardavimai ? 'rotate-180' : ''}`}></i>
+            </button>
+            {openMenus.pardavimai && (
+                <ul className="mt-1 ml-4 space-y-1">
+                    <li>
+                        <a
+                            onClick={(e) => { e.preventDefault(); setCurrentView('sales-invoices'); }}
+                            href="#"
+                            className={`nav-link flex items-center px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg text-sm ${isActive('sales-invoices') ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''}`}
+                        >
+                            <span>Pardavimo sąskaitos</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a
+                            onClick={(e) => { e.preventDefault(); setCurrentView('sales-items'); }}
+                            href="#"
+                            className={`nav-link flex items-center px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg text-sm ${isActive('sales-items') ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''}`}
+                        >
+                            <span>Parduodamos prekės</span>
+                        </a>
+                    </li>
+                    <li>
+                         <a
+                            onClick={(e) => { e.preventDefault(); setCurrentView('product-tree'); }}
+                            href="#"
+                            className={`nav-link flex items-center px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg text-sm ${isActive('product-tree') ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''}`}
+                        >
+                            <span>Prekių medis</span>
+                        </a>
+                    </li>
+                </ul>
+            )}
         </li>
 
+        {/* 4. SISTEMA */}
         <li className="pt-4 pb-2 px-4">
           <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sistema</span>
         </li>
-
+        
         <li>
           <a
             onClick={(e) => { e.preventDefault(); setCurrentView('companies'); }}
             href="#"
-            className={`nav-link flex items-center px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${
-              currentView === 'companies' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
-            }`}
+            className={`nav-link ${isActive('companies') ? 'active bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'} flex items-center px-4 py-3 rounded-lg`}
           >
             <i className="fas fa-building w-5 mr-3 text-base"></i>
             <span>Įmonės</span>
           </a>
         </li>
-
+        
         <li>
-          <button
-            onClick={() => setIsPurchasesOpen(!isPurchasesOpen)}
-            className={`nav-link flex items-center w-full px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${
-              (currentView === 'purchases' || currentView === 'product-tree') ? 'bg-indigo-50 text-indigo-700 font-medium' : ''
-            }`}
-          >
-            <i className="fas fa-shopping-cart w-5 mr-3 text-base"></i>
-            <span className="flex-1 text-left">Pirkimai</span>
-            <i className={`fas fa-chevron-down text-xs transition-transform ${
-              isPurchasesOpen ? 'rotate-180' : ''
-            }`}></i>
-          </button>
-          {isPurchasesOpen && (
-            <ul className="mt-1 ml-4 space-y-1">
-              <li>
-                <a
-                  onClick={(e) => { e.preventDefault(); setCurrentView('purchases'); }}
-                  href="#"
-                  className={`nav-link flex items-center px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg text-sm ${
-                    currentView === 'purchases' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
-                  }`}
-                >
-                  <span>Prekės</span>
-                </a>
-              </li>
-              <li>
-                <a
-                  onClick={(e) => { e.preventDefault(); setCurrentView('product-tree'); }}
-                  href="#"
-                  className={`nav-link flex items-center px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg text-sm ${
-                    currentView === 'product-tree' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
-                  }`}
-                >
-                  <span>Prekių medis</span>
-                </a>
-              </li>
-            </ul>
-          )}
+            <a
+                onClick={(e) => { e.preventDefault(); setCurrentView('export'); }}
+                href="#"
+                className={`nav-link ${isActive('export') ? 'active bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'} flex items-center px-4 py-3 rounded-lg`}
+            >
+                <i className="fas fa-file-export w-5 mr-3 text-base"></i>
+                <span>Eksportai</span>
+            </a>
         </li>
 
         <li>
-          <a
-            onClick={(e) => { e.preventDefault(); setCurrentView('export'); }}
-            href="#"
-            className={`nav-link flex items-center px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${
-              currentView === 'export' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
-            }`}
-          >
-            <i className="fas fa-file-export w-5 mr-3 text-base"></i>
-            <span>Eksportai</span>
-          </a>
+            <a
+                onClick={(e) => { e.preventDefault(); setCurrentView('reports'); }}
+                href="#"
+                className={`nav-link ${isActive('reports') ? 'active bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'} flex items-center px-4 py-3 rounded-lg`}
+            >
+                <i className="fas fa-chart-bar w-5 mr-3 text-base"></i>
+                <span>Ataskaitos</span>
+            </a>
         </li>
 
+        {/* 5. NUSTATYMAI */}
         <li>
-          <a
-            onClick={(e) => { e.preventDefault(); setCurrentView('reports'); }}
-            href="#"
-            className={`nav-link flex items-center px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${
-              currentView === 'reports' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
-            }`}
-          >
-            <i className="fas fa-chart-bar w-5 mr-3 text-base"></i>
-            <span>Ataskaitos</span>
-          </a>
+            <button
+                onClick={() => toggleMenu('nustatymai')}
+                className={`nav-link flex items-center w-full px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${openMenus.nustatymai ? 'bg-indigo-50 text-indigo-700 font-medium' : ''}`}
+            >
+                <i className="fas fa-cogs w-5 mr-3 text-base"></i>
+                <span className="flex-1 text-left">Nustatymai</span>
+                <i className={`fas fa-chevron-down text-xs transition-transform ${openMenus.nustatymai ? 'rotate-180' : ''}`}></i>
+            </button>
+            {openMenus.nustatymai && (
+                <ul className="mt-1 ml-4 space-y-1">
+                    <li>
+                        <a
+                            onClick={(e) => { e.preventDefault(); setCurrentView('settings-company'); }}
+                            href="#"
+                            className={`nav-link flex items-center px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg text-sm ${isActive('settings-company') ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''}`}
+                        >
+                            <span>Įmonės Informacija</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a
+                            onClick={(e) => { e.preventDefault(); setCurrentView('settings-users'); }}
+                            href="#"
+                            className={`nav-link flex items-center px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg text-sm ${isActive('settings-users') ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''}`}
+                        >
+                            <span>Vartotojai</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a
+                            onClick={(e) => { e.preventDefault(); setCurrentView('settings-clients'); }}
+                            href="#"
+                            className={`nav-link flex items-center px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg text-sm ${isActive('settings-clients') ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''}`}
+                        >
+                            <span>Klientų informacija</span>
+                        </a>
+                    </li>
+                </ul>
+            )}
         </li>
 
-        <li>
-          <a
-            onClick={(e) => { e.preventDefault(); setCurrentView('users'); }}
-            href="#"
-            className={`nav-link flex items-center px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg ${
-              currentView === 'users' ? 'active bg-indigo-50 text-indigo-700 font-medium' : ''
-            }`}
-          >
-            <i className="fas fa-users w-5 mr-3 text-base"></i>
-            <span>Vartotojai</span>
-          </a>
-        </li>
       </ul>
 
-      <div className="p-4 border-t border-slate-200">
-        <div className="flex items-center gap-3 px-2 py-2 rounded-lg">
-          <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center text-white font-semibold text-sm">
-            {userEmail.substring(0, 2).toUpperCase()}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-slate-700 truncate">{userEmail}</div>
-            <div className="text-xs text-slate-500">{userRole === 'admin' ? 'Administratorius' : 'Vartotojas'}</div>
-          </div>
-          <button
-            onClick={onLogout}
-            className="text-slate-400 hover:text-red-500 transition-colors"
-            title="Atsijungti"
-          >
-            <i className="fas fa-sign-out-alt"></i>
-          </button>
-        </div>
+      {/* NAUJAS PAKEITIMAS: Versijos numeris apačioje */}
+      <div className="p-4 mt-auto border-t border-slate-200">
+        <span className="text-xs text-slate-400 block text-center">v1.0.0</span>
       </div>
+      
     </nav>
   );
 }
