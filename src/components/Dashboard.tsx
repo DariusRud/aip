@@ -16,7 +16,7 @@ interface DashboardProps {
   setCurrentView: (view: View) => void;
 }
 
-function Dashboard({ currentDate, stats, setShowUploadModal, setCurrentView }: DashboardProps) {
+function Dashboard({ currentDate, stats, setShowUploadModal: _setShowUploadModal, setCurrentView }: DashboardProps) {
   return (
     <>
       {/* PAKEITIMAI ATLIKTI ŠIAME BLOKE:
