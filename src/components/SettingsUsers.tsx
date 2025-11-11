@@ -1,144 +1,138 @@
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { supabase } from '../lib/supabase'; // Importuojame Supabase
+import { Database } from '../types/database'; // Importuojame tipus
 
-// === Sąsajos ===
-interface User {
-    id: number;
-    email: string;
-    name: string;
-    role: 'Super Admin' | 'Admin' | 'User' | 'Viewer';
-    company: string; // Vartotojo priskirta įmonė (Vardas, ne ID, pagal dabartinį DUMMY_USERS)
-    status: 'Active' | 'Inactive';
-    lastLogin: string;
+// --- NAUJI TIPAI PAGAL DB ---
+type UserProfile = Database['public']['Tables']['user_profiles']['Row'];
+type Company = Database['public']['Tables']['companies']['Row'];
+
+// Sukuriame naują tipą, kuris sujungia Vartotoją ir jo Įmonės pavadinimą
+interface AppUser extends UserProfile {
+    company_name: string | null; // Pridedame įmonės pavadinimą
 }
 
 interface SettingsUsersProps {
     currentUserRole: string;
-    userCompanyId: string; // NAUJAS: Prisijungusios įmonės ID (IV-1 arba CLIENT-2)
-    filterCompany: string | undefined; // Naudojama, kai ateiname iš Companies.tsx (Įmonės VARDAS)
+    userCompanyId: string; // Prisijungusios įmonės ID (pvz., "IV-1" ar "CLIENT-2")
+    filterCompany: string | undefined; 
     onClearFilter: () => void;
 }
 
-// === Pavyzdiniai VARTOTOJŲ Duomenys ===
-// Įmonių ID naudojami, kad žinotume, kas kam priklauso:
+// Įmonių ID konstantos (patogumui)
 const COMPANY_ID_MY_IV = 'IV-1';
 const COMPANY_ID_DEMO = 'CLIENT-2';
 
-const DUMMY_USERS: User[] = [
-    // IV-1 VARTOTOJAI
-    { id: 1, email: 'darius.rudvalis@iv.lt', name: 'Darius Rudvalis', role: 'Super Admin', company: 'Dariaus Rudvalio IV', status: 'Active', lastLogin: '2025-11-09' },
-    { id: 5, email: 'petras@iv.lt', name: 'Petras Petraitis', role: 'User', company: 'Dariaus Rudvalio IV', status: 'Active', lastLogin: '2025-11-07' },
-    // CLIENT-2 VARTOTOJAI
-    { id: 2, email: 'jonas@demo.lt', name: 'Jonas Buklauskas', role: 'Admin', company: 'Buhalteris Demo', status: 'Active', lastLogin: '2025-11-08' },
-    { id: 3, email: 'ieva@demo.lt', name: 'Ieva Kazlauskienė', role: 'User', company: 'Buhalteris Demo', status: 'Active', lastLogin: '2025-11-09' },
-    // Klientas A VARTOTOJAI (PRISKIRTI Buhalteris Demo)
-    { id: 4, email: 'ona@klientasA.lt', name: 'Ona Onaitytė', role: 'Viewer', company: 'Klientas A', status: 'Inactive', lastLogin: '2025-10-25' },
-];
-
-// === LOKALUS ĮMONIŲ DUOMENŲ ŠALTINIS (Kadangi neturime Companies duomenų čia, imituojame, kad žinome, kurios priklauso kam) ===
-const INITIAL_COMPANY_NAMES = ['Dariaus Rudvalio IV', 'Buhalteris Demo', 'Klientas A'];
-
-// Funkcija, kuri tikrina, ar įmonė priklauso vartotojui (naudojant paprastą DUMMY imitaciją)
-// Reikėtų naudoti realius duomenis iš API, bet kol kas naudojame DUMMY_USERS
-const isOwnedByCurrentUser = (companyName: string, currentUserId: string, currentUserRole: string): boolean => {
-    if (currentUserRole === 'Super Admin') return true;
-    if (currentUserId === COMPANY_ID_MY_IV) return true; // IV-1 valdo visus
-    
-    if (currentUserId === COMPANY_ID_DEMO) {
-        // Buhalteris Demo (CLIENT-2) mato savo įmonę ir savo klientus ('Klientas A')
-        return companyName === 'Buhalteris Demo' || companyName === 'Klientas A'; 
-    }
-    // Grįžtame prie default, kad matytų tik savo (jei būtų daugiau rolių)
-    return DUMMY_USERS.some(u => u.company === companyName && u.role === 'Admin' && u.company === companyName);
-};
-
-
 const SettingsUsers: React.FC<SettingsUsersProps> = ({ currentUserRole, userCompanyId, filterCompany, onClearFilter }) => {
-    const [users, setUsers] = useState<User[]>(DUMMY_USERS);
+    
+    const [users, setUsers] = useState<AppUser[]>([]); // Vartotojai su įmonių pavadinimais
+    const [allCompanies, setAllCompanies] = useState<Company[]>([]); // Visos įmonės (reikalingos modalui)
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    
     const [searchTerm, setSearchTerm] = useState('');
     const [showModal, setShowModal] = useState(false);
-    const [editingUser, setEditingUser] = useState<User | null>(null);
-    const [showConfirmModal, setShowConfirmModal] = useState<number | null>(null); 
+    const [editingUser, setEditingUser] = useState<AppUser | null>(null);
+    const [showConfirmModal, setShowConfirmModal] = useState<AppUser | null>(null); 
     
-    // Jei esame Buhalteris Demo, nustatome 'Buhalteris Demo'
-    const initialSelectedCompany = userCompanyId === COMPANY_ID_DEMO ? 'Buhalteris Demo' : 'Dariaus Rudvalio IV';
+    const [selectedCompanyId, setSelectedCompanyId] = useState<string>(userCompanyId);
+    
+    // --- DUOMENŲ GAVIMAS IŠ SUPABASE ---
+    useEffect(() => {
+        const fetchData = async () => {
+            setIsLoading(true);
+            setError(null);
 
-    const [selectedCompany, setSelectedCompany] = useState<string>(initialSelectedCompany);
-    
-    // Išfiltruojame unikalias įmones, kurias mato dabartinis vartotojas
+            try {
+                // 1. Gauname visas įmones
+                const { data: companiesData, error: companiesError } = await supabase
+                    .from('companies')
+                    .select('*');
+                
+                if (companiesError) throw companiesError;
+                setAllCompanies(companiesData || []);
+
+                // 2. Sudarome įmonių "žodyną" (greitesnei paieškai)
+                const companyMap = new Map(companiesData.map(c => [c.id, c.name]));
+
+                // 3. Gauname vartotojų profilius
+                // TEISINGAS KVIETIMAS: Naudojame .rpc()
+                const { data: usersData, error: usersError } = await supabase.rpc('get_visible_users', {
+                    requesting_user_role: currentUserRole,
+                    requesting_company_id: userCompanyId
+                });
+
+                if (usersError) throw usersError;
+
+                // 4. Sujungiame vartotojus su įmonių pavadinimais
+                const appUsers: AppUser[] = (usersData as UserProfile[]).map((user) => ({
+                    ...user,
+                    company_name: companyMap.get(user.company_id) || 'Nėra Įmonės'
+                }));
+                
+                setUsers(appUsers);
+
+            } catch (err: any) {
+                console.error("Klaida gaunant duomenis:", err);
+                setError(`Nepavyko užkrauti vartotojų sąrašo. Klaida: ${err.message}`);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [currentUserRole, userCompanyId]); // Efektas paleidžiamas pasikeitus vartotojui
+
+
+    // --- FILTRAVIMO LOGIKA ---
+
+    // Filtruojame įmones, kurias galime rinktis (priklauso nuo rolės)
     const uniqueCompanies = useMemo(() => {
-        const allNames = INITIAL_COMPANY_NAMES.concat(DUMMY_USERS.map(u => u.company));
-        const allUnique = Array.from(new Set(allNames));
-
-        if (currentUserRole === 'Super Admin') {
-            return allUnique;
-        } else {
-            // Rodo tik tas įmones, kurios yra valdomos dabartinio vartotojo (priklausančios jo hierarchijai)
-            return allUnique.filter(name => isOwnedByCurrentUser(name, userCompanyId, currentUserRole));
+        if (currentUserRole === 'Super Admin' || userCompanyId === COMPANY_ID_MY_IV) {
+            return allCompanies; // Matome visas
         }
-    }, [currentUserRole, userCompanyId]);
-    
-    // UŽTIKRINIMAS: Jei prisijungęs vartotojas ne Super Admin, negali matyti kitų įmonių
-    useEffect(() => {
-        if (currentUserRole !== 'Super Admin') {
-            // Priverstinai nustatome pasirinktą įmonę į pirmą matomą, jei netyčia pasirinkta neteisinga
-            if (!uniqueCompanies.includes(selectedCompany)) {
-                setSelectedCompany(uniqueCompanies[0] || initialSelectedCompany);
-            }
+        if (userCompanyId === COMPANY_ID_DEMO) {
+            // Matome save (CLIENT-2) ir savo vaikus (kurių parent_company_id yra CLIENT-2)
+            return allCompanies.filter(c => c.id === COMPANY_ID_DEMO || c.parent_company_id === COMPANY_ID_DEMO);
         }
-    }, [currentUserRole, selectedCompany, uniqueCompanies, initialSelectedCompany]);
+        // Visi kiti mato tik savo įmonę
+        return allCompanies.filter(c => c.id === userCompanyId);
+    }, [allCompanies, currentUserRole, userCompanyId]);
 
-
-    // NAUJA LOGIKA: Valdo, kada peršokti prie filtruotos įmonės (kai ateiname iš Companies.tsx)
-    useEffect(() => {
-        if (filterCompany && filterCompany !== selectedCompany) {
-            // Leidžiame peršokti, tik jei vartotojas TURI TEISĘ matyti tą įmonę
-            if (uniqueCompanies.includes(filterCompany) || currentUserRole === 'Super Admin') {
-                setSelectedCompany(filterCompany);
-            }
-            onClearFilter();
-        }
-    }, [filterCompany, onClearFilter, selectedCompany, uniqueCompanies, currentUserRole]);
-    
-    // Filtered Users Logic
+    // Filtruojame vartotojų sąrašą pagal paiešką ir pasirinktą įmonę
     const filteredUsers = useMemo(() => {
         let filtered = users;
         
-        // 1. Matomumo Filtracija (PAGRINDINIS SAUGIKLIS)
-        if (currentUserRole !== 'Super Admin') {
-            // Ne Super Admin mato TIK tas įmones, kurias jis valdo (arba kur yra priskirtas)
-            filtered = filtered.filter(user => uniqueCompanies.includes(user.company));
+        // 1. Filtracija pagal pasirinktą įmonę
+        if (selectedCompanyId) {
+            filtered = filtered.filter(user => user.company_id === selectedCompanyId);
         }
-        
-        // 2. Filtracija PAGAL PASIRINKTĄ ĮMONĘ (Valdo Vartotojų sąrašo turinį lentelėje)
-        filtered = filtered.filter(user => user.company === selectedCompany);
 
-        // 3. Filtracija pagal paieškos terminą (veikia tik pasirinktoje įmonėje)
+        // 2. Filtracija pagal paieškos terminą
         if (searchTerm) {
             const lowerCaseSearch = searchTerm.toLowerCase();
             filtered = filtered.filter(user =>
-                user.name.toLowerCase().includes(lowerCaseSearch) ||
-                user.email.toLowerCase().includes(lowerCaseSearch)
+                (user.display_name && user.display_name.toLowerCase().includes(lowerCaseSearch)) ||
+                (user.email && user.email.toLowerCase().includes(lowerCaseSearch))
             );
         }
-
         return filtered;
-    }, [users, selectedCompany, searchTerm, currentUserRole, uniqueCompanies]);
-    
-    // --- Actions ---
+    }, [users, selectedCompanyId, searchTerm]);
 
-    const handleOpenModal = (user?: User) => {
-        // Leidžiame redaguoti, jei Super Admin arba Admin ir vartotojas yra jo valdomoje įmonėje
-        if (currentUserRole === 'Super Admin') {
-            // Super Admin gali redaguoti bet ką
-        } else if (currentUserRole === 'Admin') {
-            if (user && user.company !== selectedCompany) {
-                // Adminas gali redaguoti TIK pasirinktos įmonės vartotojus.
-                return; 
+    // Efektas, kuris reaguoja į paspaudimą "Peržiūrėti vartotojus" iš Įmonių puslapio
+    useEffect(() => {
+        if (filterCompany) {
+            const company = allCompanies.find(c => c.name === filterCompany);
+            if (company) {
+                setSelectedCompanyId(company.id);
             }
-        } else {
-            return;
+            onClearFilter();
         }
+    }, [filterCompany, onClearFilter, allCompanies]);
+    
 
+    // --- VEIKSMAI (Kol kas neveikia - laukia SQL funkcijų) ---
+
+    const handleOpenModal = (user?: AppUser) => {
         setEditingUser(user || null);
         setShowModal(true);
     };
@@ -148,53 +142,67 @@ const SettingsUsers: React.FC<SettingsUsersProps> = ({ currentUserRole, userComp
         setEditingUser(null);
     };
 
-    const handleDelete = (id: number) => {
-        if (currentUserRole !== 'Super Admin') return;
-        
-        const userToDelete = users.find(u => u.id === id);
-        // APSAUGA: Negalima trinti Super Admino
-        if (userToDelete?.role === 'Super Admin') {
+    const handleDelete = (user: AppUser) => {
+        if (currentUserRole !== 'Super Admin') {
+             alert("Trinti gali tik Super Adminas.");
+             return;
+        }
+        if (user.role === 'Super Admin') {
             alert("Negalima trinti Super Admin rolės vartotojo.");
             return;
         }
-        
-        // Naudojame custom modalą vietoje window.confirm
-        setShowConfirmModal(id);
+        setShowConfirmModal(user);
     };
     
-    const handleConfirmDelete = () => {
-        if (showConfirmModal) {
-            setUsers(prev => prev.filter(u => u.id !== showConfirmModal));
-        }
+    // (Kol kas neveiks, kol nesukursime 'delete-user' funkcijos)
+    const handleConfirmDelete = async () => {
+        if (!showConfirmModal) return;
+        alert("Trynimo funkcija dar ruošiama (trūksta SQL funkcijos 'delete-user').");
         setShowConfirmModal(null);
     };
 
-    const handleSaveUser = (userData: Omit<User, 'id'>) => {
-        // Adminas GALI kurti tik pasirinktai įmonei
-        if (currentUserRole === 'Admin' && userData.company !== selectedCompany) {
-            // Adminui leidžiame kurti TIK įmonei, kuri šiuo metu pasirinkta sąraše.
-            userData.company = selectedCompany; 
-        }
-
+    // (Kol kas neveiks, kol nesukursime 'create-user' funkcijos)
+    const handleSaveUser = async (formData: any) => {
         if (editingUser) {
-            // Edit existing user
-            setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...userData, id: editingUser.id } as User : u));
+            // --- REDAGAVIMAS (Veiks) ---
+            const { data, error } = await supabase
+                .from('user_profiles')
+                .update({
+                    display_name: formData.display_name,
+                    role: formData.role,
+                    company_id: formData.company_id,
+                    status: formData.status
+                })
+                .eq('id', editingUser.id)
+                .select()
+                .single();
+            
+            if (error) {
+                setError("Klaida atnaujinant: " + error.message);
+            } else {
+                const companyName = allCompanies.find(c => c.id === data.company_id)?.name || 'Nėra';
+                setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...data, company_name: companyName } : u));
+                handleCloseModal();
+            }
         } else {
-            // Add new user
-            const newUser: User = { ...userData, id: Date.now() } as User;
-            setUsers(prev => [...prev, newUser]);
+            // --- KŪRIMAS (Kol kas neveiks) ---
+            alert("Kūrimo funkcija dar ruošiama (trūksta SQL funkcijos 'create-user').");
+            handleCloseModal();
         }
-        handleCloseModal();
     };
 
 
-    // --- Render Helpers ---
+    // --- RENDERINIMAS ---
 
-    const renderUserRow = (user: User) => (
+    if (isLoading) {
+        return <div className="p-8">Kraunami vartotojai...</div>;
+    }
+
+    const renderUserRow = (user: AppUser) => (
         <tr key={user.id} className="hover:bg-slate-50">
-            <td className="py-3 px-4 text-sm font-medium text-slate-800">{user.name}</td>
-            <td className="py-3 px-4 text-sm text-slate-600">{user.email}</td>
-            <td className="py-3 px-4 text-sm text-indigo-700 font-medium">{user.company}</td>
+            <td className="py-3 px-4 text-sm font-medium text-slate-800">{user.display_name || '-'}</td>
+            <td className="py-3 px-4 text-sm text-slate-600">{user.email || '-'}</td>
+            <td className="py-3 px-4 text-sm text-indigo-700 font-medium">{user.company_name}</td>
             <td className="py-3 px-4 text-sm">
                 <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${user.role === 'Super Admin' ? 'bg-red-100 text-red-700' : user.role === 'Admin' ? 'bg-yellow-100 text-yellow-700' : 'bg-slate-100 text-slate-700'}`}>
                     {user.role}
@@ -202,12 +210,11 @@ const SettingsUsers: React.FC<SettingsUsersProps> = ({ currentUserRole, userComp
             </td>
             <td className="py-3 px-4 text-sm">
                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${user.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
-                    {user.status}
+                    {user.status || 'Active'}
                 </span>
             </td>
-            <td className="py-3 px-4 text-sm text-slate-400">{user.lastLogin}</td>
+            <td className="py-3 px-4 text-sm text-slate-400">{user.last_login ? new Date(user.last_login).toLocaleDateString('lt-LT') : 'Niekada'}</td>
             
-            {/* Veiksmų stulpelis rodomas Super Admin arba Admin */}
             {(currentUserRole === 'Super Admin' || currentUserRole === 'Admin') && (
                 <td className="py-3 px-4 text-center">
                     <div className="flex justify-center space-x-2">
@@ -219,9 +226,8 @@ const SettingsUsers: React.FC<SettingsUsersProps> = ({ currentUserRole, userComp
                             <i className="fas fa-edit text-base"></i>
                         </button>
                         {currentUserRole === 'Super Admin' && (
-                            // Trinti gali TIK Super Admin
                             <button
-                                onClick={() => handleDelete(user.id)}
+                                onClick={() => handleDelete(user)}
                                 title="Ištrinti vartotoją"
                                 className="text-red-600 hover:text-red-900"
                             >
@@ -233,7 +239,6 @@ const SettingsUsers: React.FC<SettingsUsersProps> = ({ currentUserRole, userComp
             )}
         </tr>
     );
-
 
     return (
         <div className="flex flex-col h-full bg-slate-50">
@@ -255,35 +260,32 @@ const SettingsUsers: React.FC<SettingsUsersProps> = ({ currentUserRole, userComp
                 </div>
             </div>
 
-            {/* === ĮMONIŲ PASIRINKIMO IR PAIEŠKOS JUOSTA === */}
             <div className="bg-white px-8 pt-4 pb-6 border-b border-slate-200">
                 <p className="text-sm font-medium text-slate-700 mb-2">Pasirinkite įmonę, kurios vartotojus valdysite:</p>
                 <div className="flex flex-wrap gap-2 items-center mb-6">
-                    {/* Įmonių mygtukai, leidžiantys perjungti filtrą */}
-                    {uniqueCompanies.map(companyName => (
+                    {uniqueCompanies.map(company => (
                         <button
-                            key={companyName}
+                            key={company.id}
                             onClick={() => {
-                                setSelectedCompany(companyName);
-                                setSearchTerm(''); // Išvalome paiešką, kai keičiame įmonę
+                                setSelectedCompanyId(company.id);
+                                setSearchTerm('');
                             }}
                             className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors 
-                                ${companyName === selectedCompany 
+                                ${company.id === selectedCompanyId 
                                     ? 'bg-indigo-600 text-white shadow-md' 
                                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}
                             `}
                         >
-                            {companyName}
+                            {company.name}
                         </button>
                     ))}
                 </div>
                 
-                {/* Paieška */}
                 <div className="flex-1">
                     <label className="block text-sm font-medium text-slate-700 mb-1">Paieška (Vardas, El. paštas)</label>
                     <input
                         type="text"
-                        placeholder={`Ieškoti vartotojų įmonėje "${selectedCompany}"...`}
+                        placeholder={`Ieškoti vartotojų...`}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -291,8 +293,12 @@ const SettingsUsers: React.FC<SettingsUsersProps> = ({ currentUserRole, userComp
                 </div>
             </div>
 
-            {/* === LENTELĖS VAIZDAS === */}
             <div className="flex-1 overflow-y-auto p-8">
+                {error && (
+                    <div className="mb-4 p-4 bg-red-100 text-red-800 border border-red-300 rounded-lg">
+                        {error}
+                    </div>
+                )}
                 <div className="bg-white rounded-lg shadow-sm border border-slate-200">
                     <div className="overflow-x-auto">
                         <table className="w-full min-w-[1000px] divide-y divide-slate-200">
@@ -318,31 +324,28 @@ const SettingsUsers: React.FC<SettingsUsersProps> = ({ currentUserRole, userComp
 
                 {filteredUsers.length === 0 && (
                     <div className="p-8 text-center text-slate-500 bg-white rounded-lg mt-4">
-                        {selectedCompany
-                            ? `Nėra vartotojų įmonei "${selectedCompany}", atitinkančių paieškos kriterijus.` 
-                            : 'Nėra vartotojų, atitinkančių paieškos kriterijus.'}
+                        Nėra vartotojų, atitinkančių paieškos kriterijus.
                     </div>
                 )}
             </div>
 
-            {/* === MODALAS VARTOTOJUI REDAGUOTI / PRIDĖTI === */}
             {showModal && (
                 <UserModal 
                     user={editingUser} 
                     onClose={handleCloseModal} 
                     onSave={handleSaveUser}
-                    allCompanies={uniqueCompanies} // Naudojame TIK matomų įmonių sąrašą
-                    currentUserRole={currentUserRole} // PRIDĖTA: perduodame rolę mygtukų valdymui modale
+                    allCompanies={uniqueCompanies} // Perduodame tik tas įmones, kurias vartotojas gali matyti
+                    currentUserRole={currentUserRole}
+                    defaultCompanyId={selectedCompanyId} // Nurodome, kuri įmonė pasirinkta
                 />
             )}
             
-            {/* === TRINIMO PATVIRTINIMO MODALAS === */}
             {showConfirmModal !== null && (
                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-lg w-full max-w-sm p-6 shadow-xl">
                         <h3 className="text-lg font-bold text-slate-800 mb-4">Patvirtinti Ištrynimą</h3>
                         <p className="text-sm text-slate-600 mb-6">
-                            Ar tikrai norite ištrinti vartotoją "{users.find(u => u.id === showConfirmModal)?.name}"? Šis veiksmas negrįžtamas.
+                            Ar tikrai norite ištrinti vartotoją "{showConfirmModal.display_name}" ({showConfirmModal.email})? Šis veiksmas negrįžtamas.
                         </p>
                         <div className="flex justify-end space-x-3">
                             <button 
@@ -368,27 +371,28 @@ const SettingsUsers: React.FC<SettingsUsersProps> = ({ currentUserRole, userComp
 export default SettingsUsers;
 
 
-// === User Modal Component (Atnaujintas) ===
+// === Vartotojo Modalo Komponentas (Atnaujintas) ===
 
 interface UserModalProps {
-    user: User | null;
+    user: AppUser | null; // Dabar naudojame AppUser tipą
     onClose: () => void;
-    onSave: (userData: Omit<User, 'id'>) => void;
-    allCompanies: string[];
-    currentUserRole: string; // PRIDĖTA: patikrinimui
+    onSave: (formData: any) => void;
+    allCompanies: Company[]; // Dabar gauname tikras įmones
+    currentUserRole: string;
+    defaultCompanyId: string; // Kuri įmonė turi būti parinkta pagal nutylėjimą
 }
 
-const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave, allCompanies, currentUserRole }) => {
+const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave, allCompanies, currentUserRole, defaultCompanyId }) => {
     
-    // Nustatome formos duomenis, numatytajai įmonei naudojame pirmąją iš sąrašo
-    const [formData, setFormData] = useState<Omit<User, 'id'>>(user || {
-        email: '',
-        name: '',
-        role: 'User',
-        company: allCompanies[0] || 'Dariaus Rudvalio IV', // Numatytasis pasirinkimas
-        status: 'Active',
-        lastLogin: new Date().toISOString().substring(0, 10),
-    } as Omit<User, 'id'>);
+    // Nustatome pradinius formos duomenis
+    const [formData, setFormData] = useState({
+        email: user?.email || '',
+        password: '', // Slaptažodis visada tuščias
+        display_name: user?.display_name || '',
+        role: user?.role || 'User',
+        company_id: user?.company_id || defaultCompanyId,
+        status: user?.status || 'Active',
+    });
     
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -402,8 +406,6 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave, allCompani
         e.preventDefault();
         onSave(formData);
     };
-
-    const uniqueCompanies = Array.from(new Set(allCompanies));
 
     return (
          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -420,21 +422,30 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave, allCompani
                     
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Vardas Pavardė</label>
-                        <input type="text" name="name" value={formData.name} onChange={handleChange} required
+                        <input type="text" name="display_name" value={formData.display_name} onChange={handleChange} required
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" />
                     </div>
                     
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">El. paštas</label>
                         <input type="email" name="email" value={formData.email} onChange={handleChange} required
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" />
+                            disabled={!!user} // Neleidžiame keisti el. pašto redaguojant
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-100" />
                     </div>
+
+                    {/* Slaptažodžio laukas rodomas tik kuriant naują vartotoją */}
+                    {!user && (
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Slaptažodis</label>
+                            <input type="password" name="password" value={formData.password} onChange={handleChange} required
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" />
+                        </div>
+                    )}
 
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Rolė</label>
                         <select name="role" value={formData.role} onChange={handleChange}
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
-                            {/* Super Admin rolę gali keisti tik pats Super Admin, ne Admin */}
                             {currentUserRole === 'Super Admin' && <option value="Super Admin">Super Admin</option>}
                             <option value="Admin">Admin</option>
                             <option value="User">User</option>
@@ -445,17 +456,13 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave, allCompani
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Įmonė</label>
                         <select 
-                            name="company" 
-                            value={formData.company} 
+                            name="company_id" 
+                            value={formData.company_id} 
                             onChange={handleChange}
-                            // Adminas negali keisti įmonės priskirtų vartotojų (tik Super Admin)
-                            disabled={currentUserRole === 'Admin' && !!user} 
+                            disabled={currentUserRole === 'Admin' && !!user} // Adminas negali keisti įmonės
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
-                            {uniqueCompanies.map(c => <option key={c} value={c}>{c}</option>)}
+                            {allCompanies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
-                        {currentUserRole === 'Admin' && !user && (
-                            <p className="mt-1 text-xs text-slate-500">Adminas kuria vartotoją tik šiuo metu pasirinktai įmonei.</p>
-                        )}
                     </div>
 
                     <div>
