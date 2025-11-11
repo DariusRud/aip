@@ -161,13 +161,13 @@ function App() {
                     userCompanyId={userCompanyId}
                 />; 
             
-            case 'upload-document':
+            // DOKUMENTAI: PRIDĖTAS userCompanyId
                 return <UploadDocument 
                     onUploadSuccess={() => handleSetCurrentView('unprocessed-invoices')}
                     userCompanyId={userCompanyId}
                 />;
             
-            case 'uploaded-documents':
+          	case 'uploaded-documents':
                 return <UploadedDocuments 
                     userCompanyId={userCompanyId}
                 />;
@@ -214,7 +214,7 @@ function App() {
                 	userCompanyId={userCompanyId} 
                 	viewType="tenants" 
                 	onViewUsers={handleViewUsers} 
-</i>             />; 
+            />; 
                 
           	case 'settings-profile':
               	return <SettingsProfile />;
@@ -275,7 +275,7 @@ function App() {
               	<Sidebar
                   	currentView={currentView}
                 	setCurrentView={handleSetCurrentView} 
-  Data         	stats={stats}
+                	stats={stats}
               	/>
 
               	<main className="flex-1 overflow-y-auto">
