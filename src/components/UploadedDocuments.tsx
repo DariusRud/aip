@@ -44,13 +44,13 @@ export default function UploadedDocuments({ userCompanyId }: UploadedDocumentsPr
   }, [statusFilter, userCompanyId]); 
 
   const fetchDocuments = async () => {
-    try {
-      setLoading(true);
-      let query = supabase
-        .from('uploaded_documents')
-        .select('*, companies:company_id(name)')
-        .eq('company_id', userCompanyId)
-        .order('created_at', { ascending: false });
+    try {
+      setLoading(true);
+      let query = supabase
+        .from('uploaded_documents')
+        .select('*, companies:company_id(name)') // Dabar naudoti tik viengubas kabutes ir kompaktišką eilutę
+        .eq('company_id', userCompanyId)
+        .order('created_at', { ascending: false });
 
       if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter);
