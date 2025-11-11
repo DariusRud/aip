@@ -21,15 +21,14 @@ interface PurchaseInvoice {
   notes: string | null;
   created_at: string;
   companies?: Company;
-  company_id: string; // PRIDĖTA: būtinas atskyrimui
+  company_id: string; 
 }
 
 interface PurchaseInvoicesProps {
   userRole: string;
-  userCompanyId: string; // PRIDĖTAS NAUJAS PROP'as
+  userCompanyId: string; 
 }
 
-// PAKEISTA: Funkcija dabar priima userCompanyId
 function PurchaseInvoices({ userRole, userCompanyId }: PurchaseInvoicesProps) { 
   const [invoices, setInvoices] = useState<PurchaseInvoice[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -69,18 +68,14 @@ function PurchaseInvoices({ userRole, userCompanyId }: PurchaseInvoicesProps) {
   useEffect(() => {
     fetchInvoices();
     fetchCompanies();
-  }, [userCompanyId]); // PAKEISTA: Reikia paleisti, jei pasikeičia įmonė
+  }, [userCompanyId]); 
 
   const fetchCompanies = async () => {
     try {
-        // TIEKĖJŲ matomumas: Rodyti visus TIEKĖJUS, kurie yra GLOBALŪS (owner_company_id: null)
-        // ARBA priklauso dabartinei įmonei (owner_company_id: userCompanyId)
-        // Supabase užklausa supaprastinimui:
       const { data, error } = await supabase
         .from('companies')
         .select('id, name, code')
-        .eq('is_supplier', true) // Tik tiekėjai
-        // Jei naudosite aukštesnio lygio filtravimą, galite jį čia pridėti, bet geriausia palikti platus sąrašas
+        .eq('is_supplier', true)
         .order('name');
 
       if (error) throw error;
@@ -97,14 +92,13 @@ function PurchaseInvoices({ userRole, userCompanyId }: PurchaseInvoicesProps) {
         .from('purchase_invoices')
         .select(`
           *,
-          companies:supplier_id (
+          companies:supplier_id(
             id,
             name,
             code
           )
         `)
-        // PRIDĖTAS PAGRINDINIS MULTI-TENANT FILTRAS:
-        .eq('company_id', userCompanyId) // Rodyti TIK sąskaitas, priklausančias prisijungusiai įmonei
+        .eq('company_id', userCompanyId) 
         .order('invoice_date', { ascending: false });
 
       if (filters.supplier) {
@@ -136,10 +130,9 @@ function PurchaseInvoices({ userRole, userCompanyId }: PurchaseInvoicesProps) {
 
   useEffect(() => {
     fetchInvoices();
-  }, [filters, userCompanyId]); // PAKEISTA: užtikrina, kad filtruojama iš naujo pasikeitus įmonei
+  }, [filters, userCompanyId]);
 
   const handleOpenModal = (invoice?: PurchaseInvoice) => {
-    // ... (Logika nebuvo keista)
     if (invoice) {
       setEditingInvoice(invoice);
       setFormData({
@@ -172,9 +165,8 @@ function PurchaseInvoices({ userRole, userCompanyId }: PurchaseInvoicesProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // PAKEISTA: Vartotojo vaidmuo gali būti 'Admin' (Buhalteris Demo) arba 'Super Admin'.
-    // Jūsų App.tsx nenaudoja tik 'admin'.
-    if (userRole.toLowerCase() !== 'admin' && userRole.toLowerCase() !== 'super admin') {
+    const isAdminOrSuperAdmin = userRole.toLowerCase() === 'admin' || userRole.toLowerCase() === 'super admin';
+    if (!isAdminOrSuperAdmin) {
       setError('Tik administratoriai gali valdyti sąskaitas');
       return;
     }
@@ -191,7 +183,7 @@ function PurchaseInvoices({ userRole, userCompanyId }: PurchaseInvoicesProps) {
         sum_with_vat: formData.sum_with_vat,
         total_amount: formData.sum_with_vat,
         notes: formData.notes || null,
-        company_id: userCompanyId, // PRIDĖTA: priskiriame sąskaitą dabartinei įmonei
+        company_id: userCompanyId,
       };
 
       if (editingInvoice) {
@@ -199,7 +191,7 @@ function PurchaseInvoices({ userRole, userCompanyId }: PurchaseInvoicesProps) {
           .from('purchase_invoices')
           .update(dataToSubmit)
           .eq('id', editingInvoice.id)
-          .eq('company_id', userCompanyId); // APSAUGA: Redaguoti galima tik savo sąskaitas
+          .eq('company_id', userCompanyId);
         if (error) throw error;
       } else {
         const { error } = await supabase
@@ -224,7 +216,7 @@ function PurchaseInvoices({ userRole, userCompanyId }: PurchaseInvoicesProps) {
         .from('purchase_invoices')
         .delete()
         .eq('id', id)
-        .eq('company_id', userCompanyId); // APSAUGA: Trinti galima tik savo sąskaitas
+        .eq('company_id', userCompanyId);
 
       if (error) throw error;
       fetchInvoices();
@@ -236,9 +228,8 @@ function PurchaseInvoices({ userRole, userCompanyId }: PurchaseInvoicesProps) {
   if (loading) {
     return <div className="flex items-center justify-center h-full"><div className="text-slate-500">Kraunama...</div></div>;
   }
-    
-    // PAKEISTA: bendras vaidmens tikrinimas
-    const isAdminOrSuperAdmin = userRole.toLowerCase() === 'admin' || userRole.toLowerCase() === 'super admin';
+
+  const isAdminOrSuperAdmin = userRole.toLowerCase() === 'admin' || userRole.toLowerCase() === 'super admin';
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
@@ -248,9 +239,9 @@ function PurchaseInvoices({ userRole, userCompanyId }: PurchaseInvoicesProps) {
             <h1 className="text-2xl font-bold text-slate-800">Gautų Sąskaitų Registras</h1>
             <p className="text-sm text-slate-500 mt-1">Pirkimo sąskaitų valdymas</p>
           </div>
-          {isAdminOrSuperAdmin && ( // PAKEISTA
+          {isAdminOrSuperAdmin && (
             <button
-              onClick={() => handleOpenModal()}
+              onClick={() => setShowModal(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <i className="fas fa-plus mr-2"></i>
@@ -259,8 +250,7 @@ function PurchaseInvoices({ userRole, userCompanyId }: PurchaseInvoicesProps) {
           )}
         </div>
 
-        {/* ... (Filtrai praleisti) ... */}
-        <div className="flex flex-wrap gap-4 items-end">
+        <div className="flex flex-wrap gap-4 items-end">
           <div className="flex-1 min-w-[200px]">
             <label className="block text-sm font-medium text-slate-700 mb-1">Tiekėjas:</label>
             <select
@@ -308,7 +298,6 @@ function PurchaseInvoices({ userRole, userCompanyId }: PurchaseInvoicesProps) {
             />
           </div>
         </div>
-
       </div>
 
       {error && (
@@ -333,7 +322,7 @@ function PurchaseInvoices({ userRole, userCompanyId }: PurchaseInvoicesProps) {
                     <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700">SUMA NETTO</th>
                     <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700">PVM</th>
                     <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700">SUMA SU PVM</th>
-                    {isAdminOrSuperAdmin && ( // PAKEISTA
+                    {isAdminOrSuperAdmin && (
                       <th className="text-center py-3 px-4 text-sm font-semibold text-slate-700">VEIKSMAI</th>
                     )}
                   </tr>
@@ -353,7 +342,7 @@ function PurchaseInvoices({ userRole, userCompanyId }: PurchaseInvoicesProps) {
                       <td className="py-3 px-4 text-right font-semibold text-slate-800">
                         {invoice.sum_with_vat?.toFixed(2) || '0.00'}
                       </td>
-                      {isAdminOrSuperAdmin && ( // PAKEISTA
+                      {isAdminOrSuperAdmin && (
                         <td className="py-3 px-4">
                           <div className="flex gap-2 justify-center">
                             <button
@@ -373,7 +362,7 @@ function PurchaseInvoices({ userRole, userCompanyId }: PurchaseInvoicesProps) {
                           </div>
                         </td>
                       )}
-                    </tr>
+                  </tr>
                   ))}
                 </tbody>
               </table>
@@ -386,160 +375,158 @@ function PurchaseInvoices({ userRole, userCompanyId }: PurchaseInvoicesProps) {
             </div>
         </div>
       </div>
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4">
+              <h2 className="text-xl font-bold text-slate-800">
+                {editingInvoice ? 'Koreguoti Sąskaitą' : 'Nauja Sąskaita'}
+              </h2>
+            </div>
+            <form onSubmit={handleSubmit} className="p-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Sąskaitos numeris <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.invoice_number}
+                    onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  />
+                </div>
 
-      {/* Modalo dalis praleista dėl trumpumo */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4">
-              <h2 className="text-xl font-bold text-slate-800">
-                {editingInvoice ? 'Koreguoti Sąskaitą' : 'Nauja Sąskaita'}
-              </h2>
-            </div>
-            <form onSubmit={handleSubmit} className="p-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Sąskaitos numeris <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.invoice_number}
-                    onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  />
-                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Tiekėjas</label>
+                  <select
+                    value={formData.supplier_id}
+                    onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Pasirinkite tiekėją</option>
+                    {companies.map((company) => (
+                      <option key={company.id} value={company.id}>
+                        {company.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Tiekėjas</label>
-                  <select
-                    value={formData.supplier_id}
-                    onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Pasirinkite tiekėją</option>
-                    {companies.map((company) => (
-                      <option key={company.id} value={company.id}>
-                        {company.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">PVM kodas</label>
+                  <input
+                    type="text"
+                    value={formData.company_vat_code}
+                    onChange={(e) => setFormData({ ...formData, company_vat_code: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">PVM kodas</label>
-                  <input
-                    type="text"
-                    value={formData.company_vat_code}
-                    onChange={(e) => setFormData({ ...formData, company_vat_code: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Sąskaitos data <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.invoice_date}
+                    onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  />
+                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Sąskaitos data <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.invoice_date}
-                    onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  />
-                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Užsakymo numeris</label>
+                  <input
+                    type="text"
+                    value={formData.order_number}
+                    onChange={(e) => setFormData({ ...formData, order_number: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
 
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Užsakymo numeris</label>
-                  <input
-                    type="text"
-                    value={formData.order_number}
-                    onChange={(e) => setFormData({ ...formData, order_number: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Suma netto</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.sum_netto}
+                    onChange={(e) => {
+                      const netto = parseFloat(e.target.value) || 0;
+                      setFormData({
+                        ...formData,
+                        sum_netto: netto,
+                        sum_with_vat: netto + formData.vat_amount
+                      });
+                    }}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Suma netto</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.sum_netto}
-                    onChange={(e) => {
-                      const netto = parseFloat(e.target.value) || 0;
-                      setFormData({
-                        ...formData,
-                        sum_netto: netto,
-                        sum_with_vat: netto + formData.vat_amount
-                      });
-                    }}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">PVM</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.vat_amount}
+                    onChange={(e) => {
+                      const vat = parseFloat(e.target.value) || 0;
+                      setFormData({
+                        ...formData,
+                        vat_amount: vat,
+                        sum_with_vat: formData.sum_netto + vat
+                      });
+                    }}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">PVM</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.vat_amount}
-                    onChange={(e) => {
-                      const vat = parseFloat(e.target.value) || 0;
-                      setFormData({
-                        ...formData,
-                        vat_amount: vat,
-                        sum_with_vat: formData.sum_netto + vat
-                      });
-                    }}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Suma su PVM</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.sum_with_vat}
+                    onChange={(e) => setFormData({ ...formData, sum_with_vat: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-semibold"
+                  />
+                </div>
 
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Suma su PVM</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.sum_with_vat}
-                    onChange={(e) => setFormData({ ...formData, sum_with_vat: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-semibold"
-                  />
-                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Pastabos</label>
+                  <textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    rows={3}
+                  />
+                </div>
+              </div>
 
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Pastabos</label>
-                  <textarea
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    rows={3}
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    setEditingInvoice(null);
-                  }}
-                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
-                >
-                  Atšaukti
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  {editingInvoice ? 'Išsaugoti' : 'Pridėti'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditingInvoice(null);
+                  }}
+                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+                >
+                  Atšaukti
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  {editingInvoice ? 'Išsaugoti' : 'Pridėti'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
