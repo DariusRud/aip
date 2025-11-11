@@ -1,248 +1,208 @@
 import React, { useState, useEffect } from 'react';
-// import { supabase } from '../lib/supabase'; // Tikra Supabase instancija
+import { supabase } from '../lib/supabase';
+import { View } from '../App';
+import { Database } from '../types/database'; // Importuojame pagrindinius tipus
 
-
-// === Sąsaja be Rivile prefix ===
-interface ClientData {
-    client_id: string;
-    company_name: string;
-    company_pvm_code: string;
-    company_code: string;
-    bank_account: string;
-    email_for_invoices: string;
-    manager_name: string; 
-}
-
-// Lokalūs pavyzdiniai duomenys
-const ALL_COMPANIES_DATA: Record<string, ClientData> = {
-    'IV-1': { // Dariaus Rudvalio IV
-        client_id: 'IV-1', 
-        company_name: 'Dariaus Rudvalio IV (System)',
-        company_pvm_code: 'LT100200',
-        company_code: '300100200',
-        bank_account: 'LT1210000111111111', 
-        email_for_invoices: 'admin@iv.lt',
-        manager_name: 'Darius Rudvalis',
-    },
-    'CLIENT-2': { // Buhalteris Demo
-        client_id: 'CLIENT-2', 
-        company_name: 'Buhalteris Demo (Client)',
-        company_pvm_code: 'LT400200',
-        company_code: '400100200',
-        bank_account: 'LT9990000999999999', 
-        email_for_invoices: 'buhalteris@demo.lt',
-        manager_name: 'Jonas Buklauskas',
-    },
-}
+// Naudojame tipą tiesiai iš Supabase
+type CompanyData = Database['public']['Tables']['companies']['Row'];
 
 interface SettingsCompanyProps {
     userRole: string;
     userCompanyId: string;
-    setCurrentView: (view: any) => void; 
+    setCurrentView: (view: View) => void;
 }
 
-
 const SettingsCompany: React.FC<SettingsCompanyProps> = ({ userRole, userCompanyId, setCurrentView }) => {
-    
-    const [data, setData] = useState<ClientData>(ALL_COMPANIES_DATA[userCompanyId] || ALL_COMPANIES_DATA['IV-1']); 
-    const [isLoading, setIsLoading] = useState(false); 
-    const [isSaving, setIsSaving] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    
+    // Nustatome pradinius duomenis kaip 'null'
+    const [companyData, setCompanyData] = useState<Partial<CompanyData>>({});
+    const [isLoading, setIsLoading] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        setError(null);
-        setSuccessMessage(null);
-        setIsLoading(true);
-        
-        const fetchedData = ALL_COMPANIES_DATA[userCompanyId]; 
-        
-        if (fetchedData) {
-            setData(fetchedData);
-        } else {
-            setError(`Įmonės ${userCompanyId} nustatymų nerasta.`);
-        }
-        setIsLoading(false);
-    }, [userCompanyId]);
+    // Duomenų atsisiuntimas iš Supabase
+    useEffect(() => {
+        const fetchCompanyData = async () => {
+            setIsLoading(true);
+            setError(null);
 
+            // select('*') automatiškai paims naujus stulpelius
+            const { data, error } = await supabase
+                .from('companies')
+                .select('*')
+                .eq('id', userCompanyId)
+                .single();
 
-    const handleSave = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsSaving(true);
-        setError(null);
-        setSuccessMessage(null);
+            if (error) {
+                console.error("Klaida gaunant įmonės duomenis:", error);
+                setError("Nepavyko užkrauti įmonės duomenų.");
+            } else if (data) {
+                setCompanyData(data);
+            }
+            setIsLoading(false);
+        };
 
-        if (data.client_id !== userCompanyId) {
-            setError('Saugumo klaida: Nesutampa prisijungusios įmonės ID.');
-            setIsSaving(false);
-            return;
-        }
+        fetchCompanyData();
+    }, [userCompanyId]);
 
-        if (userRole !== 'Admin' && userRole !== 'Super Admin') {
-            setError('Neturite teisių koreguoti šių duomenų.');
-            setIsSaving(false);
-            return;
-        }
-
-        console.log('Duomenys sėkmingai paruošti siuntimui į DB:', data);
-        
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        setSuccessMessage(`Įmonės "${data.company_name}" duomenys sėkmingai atnaujinti LOKALIAI!`);
-        setIsSaving(false);
-    };
-    
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setData(prev => ({
-            ...prev,
-            [name as keyof ClientData]: value
-        }));
-    };
-
-    const handleViewUsers = () => {
-        setCurrentView('settings-users');
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        // Naudojame 'value || null', kad tuščias laukas būtų išsaugotas kaip NULL
+        setCompanyData(prev => ({ ...prev, [name]: value || null }));
     };
 
+    // Išsaugojimas į Supabase
+    const handleSave = async () => {
+        setError(null);
+        setShowSuccess(false);
 
-    if (isLoading) {
-        return <div className="p-8 text-center text-slate-500">Kraunami įmonės nustatymai...</div>;
-    }
+        const { id, created_at, ...updateData } = companyData;
 
-    const canEdit = userRole === 'Admin' || userRole === 'Super Admin';
-    
-    const displayError = error && (
-        <div className="p-3 bg-red-100 text-red-700 rounded-lg mb-4 font-medium">
-            <i className="fas fa-exclamation-triangle mr-2"></i> {error}
-        </div>
-    );
-    
-    const displaySuccess = successMessage && (
-        <div className="p-3 bg-green-100 text-green-700 rounded-lg mb-4 font-medium">
-             <i className="fas fa-check-circle mr-2"></i> {successMessage}
-        </div>
-    );
+        const { error } = await supabase
+            .from('companies')
+            .update(updateData)
+            .eq('id', userCompanyId);
 
-    return (
-        <div className="p-8">
-            {/* ANTRAŠTĖ */}
-            <h2 className="text-2xl font-bold text-slate-800 mb-6">Įmonės Informacija ({data.client_id})</h2>
-            
-            <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
-                
-                {displayError}
-                {displaySuccess}
+        if (error) {
+            console.error("Klaida išsaugant duomenis:", error);
+            setError("Klaida išsaugant pakeitimus.");
+        } else {
+            setShowSuccess(true);
+            setIsEditing(false);
+            setTimeout(() => setShowSuccess(false), 3000);
+        }
+    };
 
-                <form onSubmit={handleSave} className="space-y-6">
-                    {/* PAGRINDINĖ INFORMACIJA (VIENAS STULPELIS) */}
-                    <div className="grid grid-cols-1 gap-4">
-                        
-                        {/* 1. Pavadinimas */}
-                        <label className="block">
-                            <span className="text-slate-700 font-bold">Pavadinimas:</span>
-                            <input 
-                                type="text" 
-                                name="company_name"
-                                className="mt-1 block w-full rounded-md border-slate-300 shadow-sm" 
-                                value={data.company_name}
-                                onChange={handleChange}
-                                readOnly={!canEdit}
-                            />
-                        </label>
+    const handleViewUsers = () => {
+        if (companyData.name) {
+            setCurrentView('users'); 
+        }
+    };
 
-                        {/* 2. Kodas */}
-                        <label className="block">
-                            <span className="text-slate-700 font-bold">Kodas (Juridinis/Asmens):</span>
-                            <input 
-                                type="text" 
-                                name="company_code"
-                                className="mt-1 block w-full rounded-md border-slate-300 shadow-sm" 
-                                value={data.company_code}
-                                onChange={handleChange}
-                                readOnly={!canEdit}
-                            />
-                        </label>
+    // --- Rodymai ---
 
-                        {/* 3. PVM Kodas */}
-                        <label className="block">
-                            <span className="text-slate-700 font-bold">PVM kodas:</span>
-                            <input 
-                                type="text" 
-                                name="company_pvm_code"
-                                className="mt-1 block w-full rounded-md border-slate-300 shadow-sm" 
-                                value={data.company_pvm_code}
-                                onChange={handleChange}
-                                readOnly={!canEdit}
-                            />
-                        </label>
+    if (isLoading) {
+        return <div className="p-8">Kraunami įmonės duomenys...</div>;
+    }
 
-                        {/* 4. Banko Sąskaita */}
-                        <label className="block">
-                            <span className="text-slate-700 font-bold">Banko Sąskaita (IBAN):</span>
-                            <input 
-                                type="text" 
-                                name="bank_account"
-                                className="mt-1 block w-full rounded-md border-slate-300 shadow-sm" 
-                                value={data.bank_account}
-                                onChange={handleChange}
-                                readOnly={!canEdit}
-                            />
-                        </label>
-                        
-                        {/* 5. Vadovas */}
-                        <label className="block">
-                            <span className="text-slate-700 font-bold">Vadovas:</span>
-                            <input 
-                                type="text" 
-                                name="manager_name"
-                                className="mt-1 block w-full rounded-md border-slate-300 shadow-sm" 
-                                value={data.manager_name}
-                                onChange={handleChange}
-                                readOnly={!canEdit}
-                            />
-                        </label>
+    if (error) {
+        return <div className="p-8 text-red-600">{error}</div>;
+    }
 
-                        {/* 6. Sąskaitų El. Paštas */}
-                        <label className="block">
-                            <span className="text-slate-700 font-bold">Sąskaitų El. Paštas:</span>
-                            <input 
-                                type="email" 
-                                name="email_for_invoices"
-                                className="mt-1 block w-full rounded-md border-slate-300 shadow-sm" 
-                                value={data.email_for_invoices}
-                                onChange={handleChange}
-                                readOnly={!canEdit}
-                            />
-                        </label>
-                    </div>
+    // Pagalbinė funkcija laukeliams renderinti
+    const renderField = (label: string, name: keyof CompanyData, placeholder: string = '') => (
+        <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+            <input
+                type="text"
+                name={name}
+                value={companyData[name] || ''}
+                onChange={handleChange}
+                disabled={!isEditing}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-100 disabled:text-slate-500"
+                placeholder={placeholder}
+            />
+        </div>
+    );
+    
+    // NAUJAS: Pagalbinė funkcija "Pastaboms" (didesnis laukas)
+    const renderTextArea = (label: string, name: keyof CompanyData, placeholder: string = '') => (
+        <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+            <textarea
+                name={name}
+                value={companyData[name] || ''}
+                onChange={handleChange}
+                disabled={!isEditing}
+                rows={3}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-100 disabled:text-slate-500"
+                placeholder={placeholder}
+            />
+        </div>
+    );
 
-                    {/* PAKEISTA: Taisyklingas mygtukų išdėstymas vienoje eilutėje, kairėje pusėje */}
-                    <div className="pt-4 border-t border-slate-200 flex items-center gap-4">
-                        
-                        {/* Vartotojų Sąrašas mygtukas */}
-                        <button 
-                            type="button"
-                            onClick={handleViewUsers}
-                            className="text-indigo-600 hover:text-indigo-800 transition font-medium px-4 py-2"
-                            title="Peržiūrėti visus šios įmonės vartotojus"
-                        >
-                            <i className="fas fa-users mr-2"></i> Vartotojų Sąrašas
-                        </button>
-                        
-                        {/* Saugoti Pakeitimus mygtukas (su 1/2 pločio nustatymu ir flex-grow) */}
-                        <button 
-                            type="submit"
-                            // Nustatome plotį (w-1/2, max-w-sm) ir pašaliname justify-end apvyniojimą
-                            className="w-1/2 max-w-sm bg-indigo-600 text-white font-medium py-2 px-6 rounded-lg shadow hover:bg-indigo-700 transition disabled:opacity-50"
-                            disabled={!canEdit || isSaving}
-                        >
-                            {isSaving ? 'Saugoma...' : 'Saugoti Pakeitimus'}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
+
+    return (
+        <div className="p-8 max-w-4xl mx-auto">
+            <h1 className="text-2xl font-bold text-slate-800 mb-6">Įmonės Informacija ({companyData.id})</h1>
+
+            {showSuccess && (
+                <div className="mb-4 p-4 bg-green-100 text-green-800 border border-green-300 rounded-lg">
+                    Duomenys sėkmingai atnaujinti!
+                </div>
+            )}
+            
+            {error && (
+                <div className="mb-4 p-4 bg-red-100 text-red-800 border border-red-300 rounded-lg">
+                    {error}
+                </div>
+            )}
+
+            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8 space-y-6">
+                
+                {renderField("Pavadinimas", "name", "Įmonės pavadinimas")}
+                {renderField("Kodas (Juridinis/Asmens)", "code", "Įmonės kodas")}
+                {renderField("PVM kodas", "vat_code", "LT...")}
+                {renderField("Registracijos Adresas", "address", "Gatvė, miestas, šalis")}
+                
+                {/* --- PRIDĖTAS NAUJAS LAUKAS --- */}
+                {renderField("Korespondencijos Adresas", "correspondence_address", "Gatvė, miestas, šalis (jei skiriasi)")}
+                
+                <hr className="my-6" />
+
+                {renderField("Banko Pavadinimas", "bank_name", "Banko pavadinimas")}
+                {renderField("Banko Sąskaita (IBAN)", "bank_iban", "LT...")}
+                
+                <hr className="my-6" />
+
+                {renderField("Vadovas", "owner_name", "Vardas Pavardė")}
+                {renderField("Sąskaitų El. Paštas", "owner_email", "el.pastas@imone.lt")}
+
+                {/* --- PRIDĖTAS NAUJAS LAUKAS --- */}
+                {renderTextArea("Pastabos", "notes", "Vidinė informacija, pastabos...")}
+
+
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4">
+                    <button
+                        onClick={handleViewUsers}
+                        className="px-5 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
+                    >
+                        <i className="fas fa-users mr-2"></i>
+                        Vartotojų Sąrašas
+                    </button>
+                    
+                    <div className="flex gap-4">
+                        {isEditing ? (
+                            <>
+                                <button
+                                    onClick={() => setIsEditing(false)}
+                                    className="px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
+                                >
+                                    Atšaukti
+                                </button>
+                                <button
+                                    onClick={handleSave}
+                                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                                >
+                                    Saugoti Pakeitimus
+                                </button>
+                            </>
+                        ) : (
+                            <button
+                                disabled={userRole !== 'Admin' && userRole !== 'Super Admin'}
+                                onClick={() => setIsEditing(true)}
+                                className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-slate-300"
+                            >
+                                <i className="fas fa-edit mr-2"></i>
+                                Redaguoti
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 }
 
 export default SettingsCompany;
