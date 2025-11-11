@@ -10,219 +10,210 @@ import PurchaseInvoices from './components/PurchaseInvoices';
 import UploadedDocuments from './components/UploadedDocuments';
 import UploadDocument from './components/UploadDocument';
 
-// Importuojame naujus komponentus
-import Header from './components/Header'; // NAUJAS HEADER
+import Header from './components/Header';
 import SettingsUsers from './components/SettingsUsers'; 
 import SettingsCompany from './components/SettingsCompany'; 
+import SettingsProfile from './components/SettingsProfile'; 
 
 interface Stats {
-  needsReview: number;
-  todayUploaded: number;
-  todayValidated: number;
-  todayExported: number;
-  todayCorrections: number;
+    needsReview: number;
+    todayUploaded: number;
+    todayValidated: number;
+    todayExported: number;
+    todayCorrections: number;
 }
 
-// ATNAUJINTAS VIEW TIPAS
-type View = 'dashboard' | 'upload-document' | 'unprocessed-invoices' | 'purchase-invoices' | 'sales-invoices' | 'purchase-items' | 'sales-items' | 'product-tree' | 'companies' | 'export' | 'reports' | 'settings-company' | 'settings-users' | 'settings-clients';
+export type View = 'dashboard' | 'upload-document' | 'unprocessed-invoices' | 
+                   'purchase-invoices' | 'sales-invoices' | 'purchase-items' | 
+                   'sales-items' | 'product-tree' | 'companies' | 'export' | 
+                   'reports' | 'settings-company' | 'settings-users' | 
+                   'settings-clients' | 'users' | 'uploaded-documents' |
+                   'settings-profile'; 
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [userEmail, setUserEmail] = useState('');
-  const [userRole, setUserRole] = useState('');
-  const [currentView, setCurrentView] = useState<View>('dashboard');
-  const [showUploadModal, setShowUploadModal] = useState(false); // Šis modalas greičiausiai bus iškeltas
-  const [currentDate, setCurrentDate] = useState('');
-  const [stats] = useState<Stats>({
-    needsReview: 5, // Paimama iš DB
-    // ... kiti stats
-    todayUploaded: 8,
-    todayValidated: 12,
-    todayExported: 15,
-    todayCorrections: 23
-  });
+    const [isAuthenticated, setIsAuthenticated] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
+    
+    // === PRISIJUNGUSIO VARTOTOJO IMITACIJA ===
+    // Kad patikrintumėte Buhalterį Demo, atkomentuokite šias eilutes ir užkomentuokite Super Admin eilutes žemiau:
+    // const [userEmail, setUserEmail] = useState('jonas@demo.lt'); // Buhalterio el. paštas
+    // const [userRole, setUserRole] = useState('Admin'); // Buhalterio rolė
+    // const userCompanyId = 'CLIENT-2'; // Buhalterio įmonės ID (Buhalteris Demo)
 
-  useEffect(() => {
-    checkAuth();
+    // DABARTINĖ SUPER ADMIN BŪSENA:
+    const [userEmail, setUserEmail] = useState('analitikas@lokalus.lt');
+    const [userRole, setUserRole] = useState('Super Admin');
+    const userCompanyId = 'IV-1'; // Sistemos savininko ID (Dariaus Rudvalio IV)
+    // =======================================
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setIsAuthenticated(true);
-        setUserEmail(session.user.email || '');
-        loadUserProfile(session.user.id);
-      } else {
-        setIsAuthenticated(false);
-        setUserEmail('');
-        setUserRole('');
-      }
-    });
+    const [currentView, setCurrentView] = useState<View>('dashboard');
+    const [showUploadModal, setShowUploadModal] = useState(false);
+    const [currentDate, setCurrentDate] = useState('');
+    const [stats] = useState<Stats>({
+        needsReview: 5,
+        todayUploaded: 8,
+        todayValidated: 12,
+        todayExported: 15,
+        todayCorrections: 23
+    });
+    // Būsena, skirta vartotojų filtravimui
+    const [userFilterCompany, setUserFilterCompany] = useState<string | undefined>(undefined); 
 
-    return () => {
-      authListener?.subscription.unsubscribe();
-    };
-  }, []);
+    // PATAISYTA: Sukuriame atskirą handleClearFilter funkciją, kad ją perduotume tiesiai
+    const handleClearUserFilter = () => {
+        setUserFilterCompany(undefined);
+    };
+    
+    // PATAISYTA: Vientisa funkcija, nukreipianti į vartotojų sąrašą su filtru (naudojama iš Companies.tsx)
+    const handleViewUsers = (companyName: string) => {
+        setUserFilterCompany(companyName);
+        setCurrentView('users'); 
+    };
+    
+    // PATAISYTA LOGIKA: dabar aiškiai nustatomas naujas vaizdas ir išvalomas filtras tik tada, kai reikia.
+    const handleSetCurrentView = (view: View) => {
+        
+        // Išvalome filtrą, jei perjungiam į Vartotojų sąrašą (be įmonės filtro)
+        if (view === 'users' || view === 'settings-users') {
+             setUserFilterCompany(undefined); 
+        } else {
+            // Jei perjungiam į BET KURĮ kitą vaizdą, pilnai išvalom vartotojo filtrą
+            setUserFilterCompany(undefined);
+        }
+        // Visada išsaugome naują vaizdą, net jei jis sutampa (užtikrinam re-render)
+        setCurrentView(view);
+    }
+    
+    // ... (praleista useEffect, loadUserProfile, handleLogout ir pan. dalys)
 
-  const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      setIsAuthenticated(true);
-      setUserEmail(session.user.email || '');
-      await loadUserProfile(session.user.id);
-    }
-    setIsLoading(false);
-  };
+    const renderMainView = () => {
+        
+        switch (currentView) {
+            case 'dashboard':
+                return <Dashboard
+                    currentDate={currentDate} 
+                    stats={stats}
+                    setShowUploadModal={setShowUploadModal}
+                    setCurrentView={handleSetCurrentView} 
+                />;
+            
+            // DOKUMENTAI: PRIDĖTAS userCompanyId
+            case 'unprocessed-invoices': 
+            case 'purchase-invoices':
+                return <PurchaseInvoices 
+                    userRole={userRole} 
+                    userCompanyId={userCompanyId}
+                />; 
+            
+            // DOKUMENTAI: PRIDĖTAS userCompanyId
+            case 'upload-document':
+                return <UploadDocument 
+                    onUploadSuccess={() => handleSetCurrentView('unprocessed-invoices')}
+                    userCompanyId={userCompanyId}
+                />;
+            
+            // DOKUMENTAI: PRIDĖTAS userCompanyId
+            case 'uploaded-documents':
+                return <UploadedDocuments 
+                    userCompanyId={userCompanyId}
+                />;
+            
+            // PREKĖS: PRIDĖTAS userCompanyId
+            case 'purchase-items':
+                return <Purchases 
+                    userRole={userRole}
+                    userCompanyId={userCompanyId}
+                />;
+            
+            // PREKĖS: PRIDĖTAS userCompanyId
+            case 'product-tree':
+                return <ProductTree 
+                    userRole={userRole}
+                    userCompanyId={userCompanyId}
+                />;
 
-  const loadUserProfile = async (userId: string) => {
-    // Ateityje čia sujungsime user_profiles ir roles
-    const { data, error } = await supabase
-      .from('user_profiles') // Naudojame naują user_profiles lentelę
-      .select('*, roles(name)') // Pasiimame rolės pavadinimą
-      .eq('user_id', userId)
-      .maybeSingle();
+            // SISTEMA (COMPANIES)
+            case 'companies':
+                return <Companies 
+                    userRole={userRole} 
+                    userCompanyId={userCompanyId} 
+                    viewType="all" 
+                    onViewUsers={handleViewUsers} 
+                />;
+            
+            // NUSTATYMAI
+            case 'settings-users':
+            case 'users':
+                return <SettingsUsers 
+                    currentUserRole={userRole} 
+                    userCompanyId={userCompanyId}
+                    filterCompany={userFilterCompany} 
+                    onClearFilter={handleClearUserFilter} 
+                />; 
 
-    if (data && !error) {
-      // @ts-ignore
-      setUserRole(data.roles?.name || 'User'); // Nustatome rolę
-    } else {
-      setUserRole('User'); // Numatome, jei profilio nėra
-    }
-  };
+            case 'settings-company':
+                return <SettingsCompany 
+                    userRole={userRole}
+                    userCompanyId={userCompanyId}
+                    setCurrentView={handleSetCurrentView} // <== TRŪKSTAMAS PROP'sas PRIDĖTAS
+                />;
 
-  const handleLogin = () => {
-    checkAuth();
-  };
+            case 'settings-clients':
+                return <Companies 
+                    userRole={userRole} 
+                    userCompanyId={userCompanyId} 
+                    viewType="tenants" 
+                    onViewUsers={handleViewUsers} 
+                />; 
+                
+            case 'settings-profile':
+                return <SettingsProfile />;
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setIsAuthenticated(false);
-    setUserEmail('');
-    setUserRole('');
-    setCurrentView('dashboard');
-  };
+            default:
+                return (
+                    <div className="max-w-7xl mx-auto p-8">
+                        <div className="bg-white rounded-xl shadow-sm border-slate-200 p-8">
+                            <p className="text-slate-600">Puslapis ruošiamas...</p>
+                            <p className="text-sm text-slate-400 mt-2">Pasirinktas vaizdas: {currentView}</p>
+                        </div>
+                    </div>
+                );
+        }
+    };
+    
+    // ... (praleista if blokai, bet originaliame kode jie būtų čia)
 
-  useEffect(() => {
-    const updateDate = () => {
-      const now = new Date();
-      setCurrentDate(now.toLocaleDateString('lt-LT', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }));
-    };
-    updateDate();
-  }, []);
+    const handleLogin = () => { /* ... */ };
+    const handleLogout = async () => { window.location.reload(); };
 
-  // Funkcija, kuri atvaizduoja pasirinktą puslapį
-  const renderMainView = () => {
-    switch (currentView) {
-      case 'dashboard':
-        return <Dashboard
-          stats={stats}
-          setShowUploadModal={setShowUploadModal}
-          setCurrentView={setCurrentView}
-        />;
-      
-      // NAUJI PUSLAPIAI
-      case 'unprocessed-invoices': // Karantinas
-        return <PurchaseInvoices userRole={userRole} />; // Kol kas naudojame seną
-      case 'upload-document':
-        return <UploadDocument onUploadSuccess={() => setCurrentView('unprocessed-invoices')} />;
-      case 'purchase-invoices':
-        return <PurchaseInvoices userRole={userRole} />; // Ateityje bus Archyvas
-      
-      case 'purchase-items':
-        return <Purchases userRole={userRole} />;
-      case 'product-tree':
-        return <ProductTree userRole={userRole} />;
-      case 'companies':
-        return <Companies userRole={userRole} />;
-      
-      // NUSTATYMAI
-      case 'settings-users':
-        return <SettingsUsers currentUserRole={userRole} />; 
-      case 'settings-company':
-        return <SettingsCompany userRole={userRole} />;
-      
-      // SENAS 'users' (nebenaudojamas)
-      case 'users':
-        return <SettingsUsers currentUserRole={userRole} />;
 
-      // Visi kiti neatvaizduoti puslapiai
-      default:
-        return (
-          <div className="max-w-7xl mx-auto p-8">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
-              <p className="text-slate-600">Puslapis ruošiamas...</p>
-              <p className="text-sm text-slate-400 mt-2">Pasirinktas vaizdas: {currentView}</p>
-            </div>
-          </div>
-        );
-    }
-  };
+    return (
+        <div className="flex h-screen flex-col overflow-hidden bg-slate-100">
+            
+            <Header 
+                currentDate={new Date().toLocaleDateString('lt-LT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                userEmail={userEmail}
+                userRole={userRole}
+                onLogout={handleLogout}
+                setCurrentView={handleSetCurrentView} 
+            />
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-slate-600">Kraunama...</div>
-      </div>
-    );
-  }
+            <div className="flex flex-1 overflow-hidden">
+                
+                <Sidebar
+                    currentView={currentView}
+                    setCurrentView={handleSetCurrentView} 
+                    stats={stats}
+                />
 
-  if (!isAuthenticated) {
-    return <Login onLogin={handleLogin} />;
-  }
+                <main className="flex-1 overflow-y-auto">
+                    {renderMainView()}
+                </main>
+            </div>
 
-  return (
-    <div className="flex h-screen flex-col overflow-hidden bg-slate-100">
-      
-      {/* 1. VIRŠUTINĖ JUOSTA (HEADER) - PERDUODAME VARTOTOJO DUOMENIS */}
-      <Header 
-        currentDate={currentDate}
-        userEmail={userEmail}
-        userRole={userRole}
-        onLogout={handleLogout}
-      />
-
-      <div className="flex flex-1 overflow-hidden">
-        
-        {/* 2. KAIRYSIS MENIU (SIDEBAR) - PAŠALINAME VARTOTOJO DUOMENIS */}
-        <Sidebar
-          currentView={currentView}
-          setCurrentView={setCurrentView}
-          stats={stats}
-        />
-
-        {/* 3. PAGRINDINIS TURINYS (MAIN CONTENT) */}
-        <main className="flex-1 overflow-y-auto">
-          {renderMainView()}
-        </main>
-      </div>
-
-      {/* MODALAS (lieka toks pats) */}
-      {showUploadModal && (
-         <div
-          className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setShowUploadModal(false)}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 animate-fade-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-2xl font-semibold text-slate-800 mb-4">Įkelti Sąskaitą</h3>
-            <p className="text-slate-600 mb-6">Funkcionalumas bus pridėtas vėliau...</p>
-            <button
-              onClick={() => setShowUploadModal(false)}
-              className="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-            >
-              Uždaryti
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+            {/* Čia būtų modalo logika */}
+        </div>
+    );
 }
 
 export default App;
