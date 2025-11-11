@@ -55,7 +55,6 @@ const SettingsUsers: React.FC<SettingsUsersProps> = ({ currentUserRole, userComp
                 const companyMap = new Map(companiesData.map(c => [c.id, c.name]));
 
                 // 3. Gauname vartotojų profilius
-                // TEISINGAS KVIETIMAS: Naudojame .rpc()
                 const { data: usersData, error: usersError } = await supabase.rpc('get_visible_users', {
                     requesting_user_role: currentUserRole,
                     requesting_company_id: userCompanyId
@@ -64,10 +63,16 @@ const SettingsUsers: React.FC<SettingsUsersProps> = ({ currentUserRole, userComp
                 if (usersError) throw usersError;
 
                 // 4. Sujungiame vartotojus su įmonių pavadinimais
-                const appUsers: AppUser[] = (usersData as UserProfile[]).map((user) => ({
-                    ...user,
-                    company_name: companyMap.get(user.company_id) || 'Nėra Įmonės'
-                }));
+                // === PATAISYMAS ČIA: Naudojame "Display name" sintaksę, kad atitiktų database.ts ===
+                const appUsers: AppUser[] = (usersData as UserProfile[]).map((user) => {
+                    const profile: AppUser = {
+                        ...user,
+                        "Display name": user["Display name"], // Paimame pagal seną pavadinimą
+                        company_name: companyMap.get(user.company_id) || 'Nėra Įmonės'
+                    };
+                    return profile;
+                });
+                // === PATAISYMO PABAIGA ===
                 
                 setUsers(appUsers);
 
@@ -80,45 +85,39 @@ const SettingsUsers: React.FC<SettingsUsersProps> = ({ currentUserRole, userComp
         };
 
         fetchData();
-    }, [currentUserRole, userCompanyId]); // Efektas paleidžiamas pasikeitus vartotojui
+    }, [currentUserRole, userCompanyId]);
 
 
     // --- FILTRAVIMO LOGIKA ---
 
-    // Filtruojame įmones, kurias galime rinktis (priklauso nuo rolės)
     const uniqueCompanies = useMemo(() => {
         if (currentUserRole === 'Super Admin' || userCompanyId === COMPANY_ID_MY_IV) {
-            return allCompanies; // Matome visas
+            return allCompanies;
         }
         if (userCompanyId === COMPANY_ID_DEMO) {
-            // Matome save (CLIENT-2) ir savo vaikus (kurių parent_company_id yra CLIENT-2)
             return allCompanies.filter(c => c.id === COMPANY_ID_DEMO || c.parent_company_id === COMPANY_ID_DEMO);
         }
-        // Visi kiti mato tik savo įmonę
         return allCompanies.filter(c => c.id === userCompanyId);
     }, [allCompanies, currentUserRole, userCompanyId]);
 
-    // Filtruojame vartotojų sąrašą pagal paiešką ir pasirinktą įmonę
     const filteredUsers = useMemo(() => {
         let filtered = users;
         
-        // 1. Filtracija pagal pasirinktą įmonę
         if (selectedCompanyId) {
             filtered = filtered.filter(user => user.company_id === selectedCompanyId);
         }
 
-        // 2. Filtracija pagal paieškos terminą
         if (searchTerm) {
             const lowerCaseSearch = searchTerm.toLowerCase();
+            // === PATAISYMAS ČIA: Naudojame "Display name" paieškai ===
             filtered = filtered.filter(user =>
-                (user.display_name && user.display_name.toLowerCase().includes(lowerCaseSearch)) ||
+                (user["Display name"] && user["Display name"].toLowerCase().includes(lowerCaseSearch)) ||
                 (user.email && user.email.toLowerCase().includes(lowerCaseSearch))
             );
         }
         return filtered;
     }, [users, selectedCompanyId, searchTerm]);
 
-    // Efektas, kuris reaguoja į paspaudimą "Peržiūrėti vartotojus" iš Įmonių puslapio
     useEffect(() => {
         if (filterCompany) {
             const company = allCompanies.find(c => c.name === filterCompany);
@@ -129,8 +128,7 @@ const SettingsUsers: React.FC<SettingsUsersProps> = ({ currentUserRole, userComp
         }
     }, [filterCompany, onClearFilter, allCompanies]);
     
-
-    // --- VEIKSMAI (Kol kas neveikia - laukia SQL funkcijų) ---
+    // --- VEIKSMAI ---
 
     const handleOpenModal = (user?: AppUser) => {
         setEditingUser(user || null);
@@ -154,21 +152,20 @@ const SettingsUsers: React.FC<SettingsUsersProps> = ({ currentUserRole, userComp
         setShowConfirmModal(user);
     };
     
-    // (Kol kas neveiks, kol nesukursime 'delete-user' funkcijos)
     const handleConfirmDelete = async () => {
         if (!showConfirmModal) return;
         alert("Trynimo funkcija dar ruošiama (trūksta SQL funkcijos 'delete-user').");
         setShowConfirmModal(null);
     };
 
-    // (Kol kas neveiks, kol nesukursime 'create-user' funkcijos)
     const handleSaveUser = async (formData: any) => {
         if (editingUser) {
             // --- REDAGAVIMAS (Veiks) ---
+            // === PATAISYMAS ČIA: Naudojame "Display name" atnaujinimui ===
             const { data, error } = await supabase
                 .from('user_profiles')
                 .update({
-                    display_name: formData.display_name,
+                    "Display name": formData.display_name, // Pataisytas lauko pavadinimas
                     role: formData.role,
                     company_id: formData.company_id,
                     status: formData.status
@@ -191,7 +188,6 @@ const SettingsUsers: React.FC<SettingsUsersProps> = ({ currentUserRole, userComp
         }
     };
 
-
     // --- RENDERINIMAS ---
 
     if (isLoading) {
@@ -200,7 +196,8 @@ const SettingsUsers: React.FC<SettingsUsersProps> = ({ currentUserRole, userComp
 
     const renderUserRow = (user: AppUser) => (
         <tr key={user.id} className="hover:bg-slate-50">
-            <td className="py-3 px-4 text-sm font-medium text-slate-800">{user.display_name || '-'}</td>
+            {/* === PATAISYMAS ČIA: Naudojame "Display name" atvaizdavimui === */}
+            <td className="py-3 px-4 text-sm font-medium text-slate-800">{user["Display name"] || '-'}</td>
             <td className="py-3 px-4 text-sm text-slate-600">{user.email || '-'}</td>
             <td className="py-3 px-4 text-sm text-indigo-700 font-medium">{user.company_name}</td>
             <td className="py-3 px-4 text-sm">
@@ -334,9 +331,9 @@ const SettingsUsers: React.FC<SettingsUsersProps> = ({ currentUserRole, userComp
                     user={editingUser} 
                     onClose={handleCloseModal} 
                     onSave={handleSaveUser}
-                    allCompanies={uniqueCompanies} // Perduodame tik tas įmones, kurias vartotojas gali matyti
+                    allCompanies={uniqueCompanies}
                     currentUserRole={currentUserRole}
-                    defaultCompanyId={selectedCompanyId} // Nurodome, kuri įmonė pasirinkta
+                    defaultCompanyId={selectedCompanyId}
                 />
             )}
             
@@ -344,8 +341,9 @@ const SettingsUsers: React.FC<SettingsUsersProps> = ({ currentUserRole, userComp
                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-lg w-full max-w-sm p-6 shadow-xl">
                         <h3 className="text-lg font-bold text-slate-800 mb-4">Patvirtinti Ištrynimą</h3>
+                        {/* === PATAISYMAS ČIA: Naudojame "Display name" === */}
                         <p className="text-sm text-slate-600 mb-6">
-                            Ar tikrai norite ištrinti vartotoją "{showConfirmModal.display_name}" ({showConfirmModal.email})? Šis veiksmas negrįžtamas.
+                            Ar tikrai norite ištrinti vartotoją "{showConfirmModal["Display name"]}" ({showConfirmModal.email})? Šis veiksmas negrįžtamas.
                         </p>
                         <div className="flex justify-end space-x-3">
                             <button 
@@ -374,21 +372,21 @@ export default SettingsUsers;
 // === Vartotojo Modalo Komponentas (Atnaujintas) ===
 
 interface UserModalProps {
-    user: AppUser | null; // Dabar naudojame AppUser tipą
+    user: AppUser | null;
     onClose: () => void;
     onSave: (formData: any) => void;
-    allCompanies: Company[]; // Dabar gauname tikras įmones
+    allCompanies: Company[];
     currentUserRole: string;
-    defaultCompanyId: string; // Kuri įmonė turi būti parinkta pagal nutylėjimą
+    defaultCompanyId: string;
 }
 
 const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave, allCompanies, currentUserRole, defaultCompanyId }) => {
     
-    // Nustatome pradinius formos duomenis
+    // === PATAISYMAS ČIA: Naudojame "Display name" ===
     const [formData, setFormData] = useState({
         email: user?.email || '',
         password: '', // Slaptažodis visada tuščias
-        display_name: user?.display_name || '',
+        display_name: user?.["Display name"] || '', // Pataisytas lauko pavadinimas
         role: user?.role || 'User',
         company_id: user?.company_id || defaultCompanyId,
         status: user?.status || 'Active',
@@ -422,7 +420,8 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave, allCompani
                     
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Vardas Pavardė</label>
-                        <input type="text" name="display_name" value={formData.display_name} onChange={handleChange} required
+                        {/* === PATAISYMAS ČIA: value={formData.display_name || ''} === */}
+                        <input type="text" name="display_name" value={formData.display_name || ''} onChange={handleChange} required
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" />
                     </div>
                     
@@ -433,7 +432,6 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave, allCompani
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-100" />
                     </div>
 
-                    {/* Slaptažodžio laukas rodomas tik kuriant naują vartotoją */}
                     {!user && (
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Slaptažodis</label>
@@ -467,7 +465,7 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave, allCompani
 
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Būsena</label>
-                        <select name="status" value={formData.status} onChange={handleChange}
+                        <select name="status" value={formData.status || 'Active'} onChange={handleChange}
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
                             <option value="Active">Active</option>
                             <option value="Inactive">Inactive</option>
