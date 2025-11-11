@@ -90,14 +90,7 @@ function PurchaseInvoices({ userRole, userCompanyId }: PurchaseInvoicesProps) {
       setLoading(true);
       let query = supabase
         .from('purchase_invoices')
-        .select(`
-          *,
-          companies:supplier_id(
-            id,
-            name,
-            code
-          )
-        `)
+        .select('*, companies:supplier_id(id, name, code)') // <--- IŠTAISYTA KRITINĖ SINTAKSĖS KLAIDA
         .eq('company_id', userCompanyId) 
         .order('invoice_date', { ascending: false });
 
