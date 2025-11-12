@@ -8,11 +8,9 @@ type UploadedDocumentInsert = Database['public']['Tables']['uploaded_documents']
 
 interface Props {
   onUploadSuccess?: () => void;
-  // 🟢 PATAISYTA: Leidžiame NULL, kad suderintume su App.tsx siunčiamu tipu
-  userCompanyId: string | null; 
+  userCompanyId: string | null; 
 }
 
-// PAKEISTA: Funkcija dabar priima userCompanyId
 export default function UploadDocument({ onUploadSuccess, userCompanyId }: Props) {
   const [uploading, setUploading] = useState(false);
   const [uploadedCount, setUploadedCount] = useState(0);
@@ -21,12 +19,11 @@ export default function UploadDocument({ onUploadSuccess, userCompanyId }: Props
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    
-    // 🟢 PRIDĖTA: Kritinė patikra. Jei nėra ID, negalima įkelti!
-    if (!userCompanyId) {
-        setMessage({ type: 'error', text: 'Klaida: Nepavyko gauti įmonės ID.' });
-        return;
-    }
+    
+    if (!userCompanyId) {
+        setMessage({ type: 'error', text: 'Klaida: Nepavyko gauti įmonės ID.' });
+        return;
+    }
 
     try {
       setUploading(true);
@@ -55,7 +52,6 @@ export default function UploadDocument({ onUploadSuccess, userCompanyId }: Props
 
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-        // Pridedame company_id į failo kelią, kad būtų lengviau administruoti (geroji praktika)
         const filePath = `documents/${userCompanyId}/${fileName}`; 
 
         const { error: uploadError } = await supabase.storage
@@ -73,16 +69,14 @@ export default function UploadDocument({ onUploadSuccess, userCompanyId }: Props
 
         const fileType = file.type.includes('pdf') ? 'pdf' : 'image';
 
-        // 🟢 PATAISYTA: Naudojame UploadedDocumentInsert tipą ir užtikriname teisingus tipus (null, 0)
-        const documentData: UploadedDocumentInsert = {
+        const documentData: UploadedDocumentInsert = {
           file_url: publicUrl,
           file_name: file.name,
           file_type: fileType,
-          company_id: userCompanyId, 
-            // 🟢 Pradinės reikšmės, kurios tikriausiai yra NULL arba 0 DB schemoje
-          supplier_name: null, // Siunčiame NULL, o ne tuščią string
-          supplier_code: null, // Siunčiame NULL, o ne tuščią string
-          invoice_number: null, // Siunčiame NULL, o ne tuščią string
+          company_id: userCompanyId, 
+          supplier_name: null, 
+          supplier_code: null, 
+          invoice_number: null, 
           invoice_date: null,
           due_date: null,
           amount_no_vat: 0,
@@ -91,7 +85,7 @@ export default function UploadDocument({ onUploadSuccess, userCompanyId }: Props
           notes: null,
           user_id: user.id,
           status: 'pending',
-        };
+        };
 
         const { error: docError } = await supabase.from('uploaded_documents').insert(documentData);
 
@@ -120,7 +114,7 @@ export default function UploadDocument({ onUploadSuccess, userCompanyId }: Props
     } finally {
       setUploading(false);
     }
-  };
+  }; // ⬅️ Čia užsibaigia handleFileChange
 
   return (
     <div className="p-8">
