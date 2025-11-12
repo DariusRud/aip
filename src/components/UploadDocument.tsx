@@ -114,7 +114,7 @@ export default function UploadDocument({ onUploadSuccess, userCompanyId }: Props
     } finally {
       setUploading(false);
     }
-  }; // ⬅️ Čia užsibaigia handleFileChange
+  };
 
   return (
     <div className="p-8">
