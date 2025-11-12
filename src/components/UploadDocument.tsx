@@ -203,4 +203,3 @@ export default function UploadDocument({ onUploadSuccess, userCompanyId }: Props
       </div>
     </div>
   );
-}
